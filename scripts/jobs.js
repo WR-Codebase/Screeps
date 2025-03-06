@@ -114,7 +114,12 @@ const jobs = {
     const targetToRepair = Game.getObjectById(creep.memory.target);
     if (targetToRepair) {
       if (creep.repair(targetToRepair) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(targetToRepair, { visualizePathStyle: { stroke: '#fa0' }, ignoreCreeps: false });
+        creep.travelTo(targetToRepair, {
+          visualizePathStyle: { stroke: '#fa0' },
+          ignoreCreeps: false,
+          reusePath: 20,  // Caches path for 20 ticks
+          maxOps: 100      // Limits CPU spent on pathfinding
+        });
       }
       // If target is full, unset target
       if (targetToRepair.hits === targetToRepair.hitsMax) {
@@ -157,12 +162,12 @@ const jobs = {
         }
         // if the target is not in the energy priority list, remove it from memory
         if (!(thisTarget instanceof Tombstone
-              || thisTarget instanceof Ruin
-              || thisTarget instanceof StructureContainer
-              || thisTarget instanceof StructureStorage
-              || thisTarget instanceof StructureLink
-              || thisTarget instanceof Source
-              || thisTarget instanceof Resource)) {
+          || thisTarget instanceof Ruin
+          || thisTarget instanceof StructureContainer
+          || thisTarget instanceof StructureStorage
+          || thisTarget instanceof StructureLink
+          || thisTarget instanceof Source
+          || thisTarget instanceof Resource)) {
           delete creep.memory.targetId;
         }
       }
@@ -298,7 +303,7 @@ const jobs = {
 
     if (creep.memory.upgrading) {
       if (creep.upgradeController(creep.room.controller) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(creep.room.controller, { visualizePathStyle: { stroke: '#fa0' }, ignoreCreeps: false, repath: 0.5});
+        creep.travelTo(creep.room.controller, { visualizePathStyle: { stroke: '#fa0' }, ignoreCreeps: false, repath: 0.5 });
       } else {
         // if room sign is not "🤖 Beep boop! 🤖" set it
         if (!creep.room.controller.sign || creep.room.controller.sign.text !== "🤖 Beep boop! 🤖") {

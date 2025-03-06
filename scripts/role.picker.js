@@ -82,17 +82,6 @@ const rolePicker = {
           if (creep.transfer(tower, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
             creep.travelTo(tower, { visualizePathStyle: { stroke: '#0af' } });
           }
-        } else {
-          // Finally, deliver to storage
-          const storage = creep.pos.findClosestByPath(FIND_STRUCTURES, {
-            filter: (s) => s.structureType === STRUCTURE_STORAGE && s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-          });
-  
-          if (storage) {
-            if (creep.transfer(storage, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-              creep.travelTo(storage, { visualizePathStyle: { stroke: '#0af' } });
-            }
-          }
         }
       }
   

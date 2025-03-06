@@ -20,7 +20,8 @@ const roleNurse = {
     if (creep.memory.nursing) {
       jobs.nourish(creep);
     } else {
-      creep.memory.energyPriority = ['CONTAINER_STORAGE', 'DROPPED_RESOURCE'];
+      // Storage, then container, then dropped resources
+      creep.memory.energyPriority = ['STORAGE', 'CONTAINER_STORAGE', 'DROPPED_RESOURCE'];
       jobs.collect(creep);
     }
 

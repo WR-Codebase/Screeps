@@ -1,10 +1,10 @@
 module.exports = {
-  run: function(creep) {
+  run: function (creep) {
     // Check if there is a command in memory
     if (creep.memory.command) {
       const command = creep.memory.command;
       // Execute command based on type
-      switch(command.type) {
+      switch (command.type) {
         case 'moveToLocations':
           // Check if there are locations to move to
           if (creep.memory.command.locations && creep.memory.command.locations.length > 0) {
@@ -42,7 +42,7 @@ module.exports = {
   },
 
   // Function to assign a new command to the scout
-  assignCommand: function(creepName, command) {
+  assignCommand: function (creepName, command) {
     if (Game.creeps[creepName]) {
       Game.creeps[creepName].memory.command = command;
     }
