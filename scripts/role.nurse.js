@@ -20,11 +20,13 @@ const roleNurse = {
     if (creep.memory.nursing) {
       jobs.nourish(creep);
     } else {
+      creep.memory.energyPriority = ['CONTAINER_STORAGE', 'DROPPED_RESOURCE'];
       jobs.collect(creep);
     }
 
     if (wasNursing !== creep.memory.nursing) {
       // The nursing state needs a baby bottle icon
+      delete creep.memory.targetId
       creep.say(creep.memory.nursing ? '🍼nurse' : '🔄collect');
     }
   }

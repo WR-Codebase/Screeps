@@ -1,5 +1,5 @@
 const jobs = require('./jobs');
-const E52N16Harvester = {
+const E53N17Harvester = {
 
   /** @param {Creep} creep **/
   run: function (creep) {
@@ -13,19 +13,26 @@ const E52N16Harvester = {
 
     if (creep.memory.harvesting) {
       // If in target room, harvest from source
-      if (creep.room.name === 'E52N16') {
-        // if creep energy is not full
-        if (creep.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-          jobs.collect(creep);
+      if (creep.room.name === 'E53N17') {
+        // If creep is empty move to the source by ID
+        if (creep.store.getFreeCapacity(RESOURCE_ENERGY) === 0) {
+          // Get the source by ID
+          const source = Game.getObjectById('5bbcb0349099fc012e63bba3');
+          creep.travelTo(source, { visualizePathStyle: { stroke: '#ffaa00' } })
+        } else {
+          // if creep energy is not full
+          if (creep.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+            jobs.collect(creep);
+          }
         }
       } else {
         // Move to target room
-        creep.travelTo(creep.pos.findClosestByRange(creep.room.findExitTo('E52N16')), { visualizePathStyle: { stroke: '#ffaa00' } });
+        creep.travelTo(creep.pos.findClosestByRange(creep.room.findExitTo('E53N17')), { visualizePathStyle: { stroke: '#ffaa00' } });
         //console.log(`[${creep.name}] is in room ${creep.room.name} and moving to target room`);
       }
     } else {
       // Return to home room to offload energy
-      if (creep.room.name === 'E51N16') {
+      if (creep.room.name === 'E52N17') {
         // If the creep is full, attempt to transfer energy to a link
         if (creep.store.getUsedCapacity() >= 0) {
           const target = creep.pos.findClosestByRange(FIND_STRUCTURES, {
@@ -43,11 +50,11 @@ const E52N16Harvester = {
         }
       } else {
         // Move to home room
-        creep.moveTo(creep.pos.findClosestByRange(creep.room.findExitTo('E51N16')), { visualizePathStyle: { stroke: '#ffffff' } });
+        creep.moveTo(creep.pos.findClosestByRange(creep.room.findExitTo('E52N17')), { visualizePathStyle: { stroke: '#ffffff' } });
         //console.log(`[${creep.name}] is in room ${creep.room.name} and moving to home room`);
       }
     }
   }
 };
 
-module.exports = E52N16Harvester;
+module.exports = E53N17Harvester;

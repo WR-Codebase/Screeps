@@ -13,42 +13,90 @@ const rolePicker = {
 
   /** @param {Creep} creep **/
   run: function (creep) {
-    // The picker creep picks up temporary resources that have fallen on the ground (tombstones, ruins, and dropped energy) and delivers them to the nearest container
+    // The picker creep picks up temporary resources (tombstones, ruins, and dropped energy) and delivers them to storage.
     if (creep.memory.picking === undefined) creep.memory.picking = false;
-
+  
     // Switch state between picking and delivering
     if (creep.memory.picking && creep.store.getFreeCapacity() === 0) {
       creep.memory.picking = false;
-      creep.say('🚚 haul');
+      creep.say('🚚 Delivering');
     }
     if (!creep.memory.picking && creep.store.getUsedCapacity() === 0) {
       creep.memory.picking = true;
-      creep.say('🔄 collect');
+      creep.say('🔄 Collect');
     }
-
+  
     if (creep.memory.picking) {
-      // Set energy priority
-      creep.memory.energyPriority = ['TOMBSTONE', 'RUIN', 'DROPPED_RESOURCE'];
+      // Set resource priority
+      creep.memory.energyPriority = ['TOMBSTONE', 'RUIN', 'STORAGE', 'DROPPED_RESOURCE'];
       jobs.collect(creep);
-
-      // If energy is full, switch to hauling
-      if (creep.store.getFreeCapacity() === 0) creep.memory.picking = false;
+  
+      // Check for minerals in tombstones if energy is unavailable
+      if (creep.store.getFreeCapacity() > 0) {
+        const tombstone = creep.pos.findClosestByPath(FIND_TOMBSTONES, {
+          filter: (t) => _.sum(t.store) > 0
+        });
+  
+        if (tombstone) {
+          const mineralType = Object.keys(tombstone.store).find(type => type !== RESOURCE_ENERGY);
+          if (mineralType && tombstone.store[mineralType] > 0) {
+            if (creep.withdraw(tombstone, mineralType) === ERR_NOT_IN_RANGE) {
+              creep.travelTo(tombstone, { visualizePathStyle: { stroke: '#ff00ff' } });
+            }
+            return;
+          }
+        }
+      }
+  
+      // If nothing is available, switch to delivery
+      if (creep.store.getUsedCapacity() > 0) creep.memory.picking = false;
+  
     } else {
-      // Find the nearest container with available capacity
-      const containers = creep.pos.findClosestByPath(FIND_STRUCTURES, {
-        filter: (s) => (s.structureType === STRUCTURE_CONTAINER
-            || s.structureType === STRUCTURE_STORAGE)
-          && s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+      // Deliver minerals first, then energy
+      if (creep.room.storage) {
+        const mineralType = Object.keys(creep.store).find(type => type !== RESOURCE_ENERGY);
+        if (mineralType && creep.store[mineralType] > 0) {
+          if (creep.transfer(creep.room.storage, mineralType) === ERR_NOT_IN_RANGE) {
+            creep.travelTo(creep.room.storage, { visualizePathStyle: { stroke: '#ff00ff' } });
+          }
+          return;
+        }
+      }
+  
+      // Deliver energy to containers first
+      const container = creep.pos.findClosestByPath(FIND_STRUCTURES, {
+        filter: (s) => s.structureType === STRUCTURE_CONTAINER && s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
       });
-
-      if (containers) {
-        if (creep.transfer(containers, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-          creep.moveTo(containers, { visualizePathStyle: { stroke: '#0af' } });
+  
+      if (container) {
+        if (creep.transfer(container, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+          creep.travelTo(container, { visualizePathStyle: { stroke: '#0af' } });
         }
       } else {
-        jobs.nourish(creep);
+        // Deliver energy to towers next
+        const tower = creep.pos.findClosestByPath(FIND_STRUCTURES, {
+          filter: (s) => s.structureType === STRUCTURE_TOWER && s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+        });
+  
+        if (tower) {
+          if (creep.transfer(tower, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+            creep.travelTo(tower, { visualizePathStyle: { stroke: '#0af' } });
+          }
+        } else {
+          // Finally, deliver to storage
+          const storage = creep.pos.findClosestByPath(FIND_STRUCTURES, {
+            filter: (s) => s.structureType === STRUCTURE_STORAGE && s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+          });
+  
+          if (storage) {
+            if (creep.transfer(storage, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+              creep.travelTo(storage, { visualizePathStyle: { stroke: '#0af' } });
+            }
+          }
+        }
       }
-      // If empty, switch to picking
+  
+      // If empty, switch back to picking mode
       if (creep.store.getUsedCapacity() === 0) creep.memory.picking = true;
     }
   }

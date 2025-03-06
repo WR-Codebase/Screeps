@@ -1,7 +1,8 @@
-const roleDrone = {
+const roleTargetDrone = {
   /** @param {Creep} creep **/
   run: function (creep) {
-    const targetRoom = 'E52N15';
+    creep.memory.targetRoom = 'E52N16'
+    const targetRoom = creep.memory.targetRoom;
     if (creep.room.name !== targetRoom) {
       console.log('Moving to target room');
       // Attempt to move to the next room
@@ -24,4 +25,4 @@ const roleDrone = {
   }
 };
 
-module.exports = roleDrone;
+module.exports = roleTargetDrone;

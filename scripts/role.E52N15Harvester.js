@@ -42,7 +42,7 @@ const E52N15Harvester = {
                 creep.memory.harvesting = false;
               }
             } else {
-              console.log(`[${creep.name}] is in room ${creep.room.name} but is very confused. ${creep.harvest(source)}`);
+              //console.log(`[${creep.name}] is in room ${creep.room.name} but is very confused. ${creep.harvest(source)}`);
 
             }
           }
@@ -55,18 +55,19 @@ const E52N15Harvester = {
     } else {
       // Return to home room to offload energy
       if (creep.room.name === 'E51N15') {
-        const targets = creep.room.find(FIND_STRUCTURES, {
-          filter: (structure) => {
-            return (structure.structureType === STRUCTURE_SPAWN
-                || structure.structureType === STRUCTURE_EXTENSION
-                || structure.structureType === STRUCTURE_STORAGE)
-              && structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
-          }
-        });
-        if (targets.length > 0) {
-          if (creep.transfer(targets[0], RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-            //console.log(`[${creep.name}] is in room ${creep.room.name} and moving to storage`);
-            creep.moveTo(targets[0], { visualizePathStyle: { stroke: '#ffffff' } });
+        // If the creep is full, attempt to transfer energy to a link
+        if (creep.store.getUsedCapacity() >= 0) {
+          const target = creep.pos.findClosestByRange(FIND_STRUCTURES, {
+            filter: (structure) => {
+              return (structure.structureType === STRUCTURE_LINK
+                && structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0)
+            }
+          });
+          if (target) {
+            if (creep.transfer(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+              //console.log(`[${creep.name}] is in room ${creep.room.name} and moving to storage`);
+              creep.moveTo(target, { visualizePathStyle: { stroke: '#ffffff' } });
+            }
           }
         }
       } else {

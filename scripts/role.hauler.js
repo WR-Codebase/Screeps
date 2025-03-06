@@ -1,3 +1,4 @@
+const Traveler = require('Traveler');
 /**
  * The Hauler role is responsible for carrying energy from drop harvesters to storage or other structures.
  * @type {{run: roleHauler.run, collectEnergy: roleHauler.collectEnergy, deliverEnergy: roleHauler.deliverEnergy}}
@@ -26,70 +27,63 @@ const roleHauler = {
   collectEnergy: function (creep) {
     const source = Game.getObjectById(creep.memory.sourceId);
     if (!source) {
-      console.log(`Source not found for ID: ${creep.memory.sourceId}`);
-      // Handle reassignment or error
+      console.log(`Hauler ${creep.name} has an invalid source ID: ${creep.memory.sourceId}`);
       return;
     }
-
-    // New logic to check for and collect dropped energy within 3 tiles of the creep's position
-    const nearbyDroppedEnergy = creep.pos.findInRange(FIND_DROPPED_RESOURCES, 3, {
-      filter: (r) => r.resourceType === RESOURCE_ENERGY
+  
+    // Look for dropped energy within 1 tile of the assigned source
+    const droppedEnergy = source.pos.findInRange(FIND_DROPPED_RESOURCES, 1, {
+      filter: (resource) => resource.resourceType === RESOURCE_ENERGY
     });
-
-    if (nearbyDroppedEnergy.length > 0) {
-      if (creep.pickup(nearbyDroppedEnergy[0]) === ERR_NOT_IN_RANGE) {
-        creep.moveTo(nearbyDroppedEnergy[0], { visualizePathStyle: { stroke: '#ffaa00' } });
+  
+    // Move to the dropped energy and pick it up
+    if (droppedEnergy.length > 0) {
+      if (creep.pickup(droppedEnergy[0]) === ERR_NOT_IN_RANGE) {
+        creep.travelTo(droppedEnergy[0], { visualizePathStyle: { stroke: '#0af' } });
       }
-    } else {
-
-      // Find closest dropped energy near the assigned source
-      const droppedEnergy = source.pos.findInRange(FIND_DROPPED_RESOURCES, 10, {
-        filter: (r) => r.resourceType === RESOURCE_ENERGY
-      });
-
-      if (droppedEnergy.length > 0) {
-        if (creep.pickup(droppedEnergy[0]) === ERR_NOT_IN_RANGE) {
-          creep.moveTo(droppedEnergy[0], { visualizePathStyle: { stroke: '#0af' } });
-        }
-      } else {
-        // Consider waiting or moving to a default position near the source
-      }
+      return;
     }
   },
   deliverEnergy: function (creep) {
-    // Deliver energy
-    const target = creep.pos.findClosestByPath(FIND_STRUCTURES, {
+    // Tower first
+    const tower = creep.pos.findClosestByPath(FIND_STRUCTURES, {
       filter: (structure) => {
-        return (structure.structureType === STRUCTURE_CONTAINER
-            || structure.structureType === STRUCTURE_STORAGE
-            || structure.structureType === STRUCTURE_TOWER)
+        return (structure.structureType === STRUCTURE_TOWER)
           && structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
       }
-    });
-    if (target) {
-      if (creep.transfer(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-        // Utilize PathFinder for optimized pathfinding
-        const path = PathFinder.search(creep.pos, target.pos, {
-          // Apply cost matrix for room to avoid obstacles and swampy areas
-          roomCallback: function (roomName) {
-            const room = Game.rooms[roomName];
-            if (!room) return;
-            const costs = new PathFinder.CostMatrix;
+    }) || [];
+    if (tower && creep.transfer(tower, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+      creep.travelTo(tower, { visualizePathStyle: { stroke: '#0af' } });
+    } else {
+      // Then container
+      const container = creep.pos.findClosestByPath(FIND_STRUCTURES, {
+        filter: (structure) => {
+          return (structure.structureType === STRUCTURE_CONTAINER)
+            && structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
+        }
+      });
+      if (creep.transfer(container, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+        creep.travelTo(container, { visualizePathStyle: { stroke: '#0af' } });
+      } else {
+        // If there is a storage with available capacity, deliver to it, otherwise deliver to the next spawn with capacity
 
-            room.find(FIND_STRUCTURES).forEach(function (struct) {
-              if (struct.structureType === STRUCTURE_ROAD) {
-                // Favor roads
-                costs.set(struct.pos.x, struct.pos.y, 1);
-              } else if (struct.structureType !== STRUCTURE_CONTAINER
-                && (struct.structureType !== STRUCTURE_RAMPART || !struct.my)) {
-                // Avoid non-walkable structures
-                costs.set(struct.pos.x, struct.pos.y, 0xff);
-              }
-            });
-            return costs;
+        if (creep.room.storage && creep.room.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+          if (creep.transfer(creep.room.storage, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+            creep.travelTo(creep.room.storage, { visualizePathStyle: { stroke: '#0af' } });
+          }
+        }
+
+        const target = creep.pos.findClosestByPath(FIND_STRUCTURES, {
+          filter: (structure) => {
+            return (structure.structureType === STRUCTURE_STORAGE)
+              && structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
           }
         });
-        creep.moveByPath(path.path);
+        if (target) {
+          if (creep.transfer(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+            creep.travelTo(target, { visualizePathStyle: { stroke: '#0af' } });
+          }
+        }
       }
     }
   }

@@ -1,9 +1,5 @@
-/**
- * The Scout role is responsible for moving to different locations and reporting back to the Queen Screep (GPT)
- * @type {{run: exports.run, assignCommand: exports.assignCommand}}
- */
 module.exports = {
-  run: function (creep) {
+  run: function(creep) {
     // Check if there is a command in memory
     if (creep.memory.command) {
       const command = creep.memory.command;
@@ -45,12 +41,8 @@ module.exports = {
     }
   },
 
-  /**
-   * Allows the Queen Screep (GPT) to assign a command to a creep via its memory
-   * @param creepName
-   * @param command
-   */
-  assignCommand: function (creepName, command) {
+  // Function to assign a new command to the scout
+  assignCommand: function(creepName, command) {
     if (Game.creeps[creepName]) {
       Game.creeps[creepName].memory.command = command;
     }
