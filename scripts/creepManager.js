@@ -14,6 +14,8 @@ const roleNurse = require('role.nurse');
 const roleHauler = require('role.hauler');
 const rolePicker = require('role.picker');
 const roleMinim = require('role.minim');
+const roleDrone = require('role.drone');
+const remoteWorker = require('role.remoteWorker');
 
 module.exports = {
     // Run creeps
@@ -24,7 +26,9 @@ module.exports = {
       nurse: roleNurse,
       repairer: roleRepairer,
       picker: rolePicker,
-      minim: roleMinim
+      minim: roleMinim,
+      drone: roleDrone,
+      remoteWorker: remoteWorker
     },
 
     run: function () {

@@ -78,7 +78,7 @@ const roomManager = {
           const distance = path.length;
 
           // Calculate optimal WORK parts based on energy capacity and one-way trip
-          const workParts = Math.min(Math.floor(energyCapacity / (HARVEST_POWER * (300 - distance))), 4);
+          const workParts = Math.min(Math.floor(energyCapacity / (HARVEST_POWER * (300 - distance))), 5);
 
           // Add calculated WORK parts, ensuring it doesn't exceed available energy
           while (
@@ -115,7 +115,8 @@ const roomManager = {
           // Similarly, if there are no haulers, spawn one, for each source.
           for (const source of sources) {
             const haulers = _.filter(Game.creeps, (creep) => creep.memory.role === 'hauler' && creep.memory.sourceId === source.id);
-            if (haulers.length < 1) {
+            // If haulers < 1 and there are containers in the room
+            if (haulers.length < 1 && room.find(FIND_STRUCTURES, { filter: { structureType: STRUCTURE_CONTAINER } }).length > 0) {
               this.wrSpawnCreep(spawn, 'hauler', [CARRY, MOVE], [], { sourceId: source.id }, 16 * 50);
             }
           }
@@ -155,6 +156,20 @@ const roomManager = {
             const minims = _.filter(Game.creeps, (creep) => creep.memory.role === 'minim'); 90
             if (links.length > 0 && minims.length < 1) {
               this.wrSpawnCreep(spawn, 'minim', [CARRY, MOVE], [], {}, 100);
+            }
+
+            // If there are no remote workers, spawn one
+            const remoteWorkers = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteWorker');
+            if (remoteWorkers.length < 3)
+              //this.wrSpawnCreep(spawn, 'remoteWorker', [WORK, CARRY, MOVE], [], {}, 16 * 50);
+            
+            // Once every 10 ticks, check if adjacent rooms are claimable
+            if (Game.time % 10 === 0) {
+              // If there isn't already a claimer, make one.
+              //const drones = _.filter(Game.creeps, (creep) => creep.memory.role === 'drone');
+              //if (drones.length < 1)
+                //this.wrSpawnCreep(spawn, 'drone', [CLAIM, MOVE], [], {}, 1000);
+
             }
           }
         }
