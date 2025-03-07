@@ -111,12 +111,12 @@ const roomManager = {
       } else {
 
         numHaulers = _.filter(Game.creeps, (creep) => creep.memory.role === 'hauler' && creep.memory.room === room.name).length;
-        if (numHaulers < numSources) {
+        if (numHaulers < numSources && room.find(FIND_STRUCTURES, { filter: { structureType: STRUCTURE_CONTAINER } }).length > 0) {
           // Similarly, if there are no haulers, spawn one, for each source.
           for (const source of sources) {
             const haulers = _.filter(Game.creeps, (creep) => creep.memory.role === 'hauler' && creep.memory.sourceId === source.id);
             // If haulers < 1 and there are containers in the room
-            if (haulers.length < 1 && room.find(FIND_STRUCTURES, { filter: { structureType: STRUCTURE_CONTAINER } }).length > 0) {
+            if (haulers.length < 1) {
               this.wrSpawnCreep(spawn, 'hauler', [CARRY, MOVE], [], { sourceId: source.id }, 16 * 50);
             }
           }

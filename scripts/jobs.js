@@ -307,7 +307,7 @@ const jobs = {
       } else {
         // if room sign is not "🤖 Beep boop! 🤖" set it
         if (!creep.room.controller.sign || creep.room.controller.sign.text !== "🤖 Beep boop! 🤖") {
-          if (creep.signController(creep.room.controller, "🤖 Beep boop! 🤖") == ERR_NOT_IN_RANGE)
+          if (creep.signController(creep.room.controller, "🤖 Beep boop! 🤖 ~ [B.N.A.]" ) == ERR_NOT_IN_RANGE)
             creep.travelTo(creep.room.controller, { visualizePathStyle: { stroke: '#fa0' }, ignoreCreeps: false });
         }
       }
