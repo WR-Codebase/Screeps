@@ -63,13 +63,13 @@ const roleHauler = {
         }
       });
       if (creep.transfer(container, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(container, { visualizePathStyle: { stroke: '#0af' } });
+        creep.travelTo(container, { visualizePathStyle: { stroke: '#0af' }, ignoreCreeps: false });
       } else {
         // If there is a storage with available capacity, deliver to it, otherwise deliver to the next spawn with capacity
 
         if (creep.room.storage && creep.room.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
           if (creep.transfer(creep.room.storage, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-            creep.travelTo(creep.room.storage, { visualizePathStyle: { stroke: '#0af' } });
+            creep.travelTo(creep.room.storage, { visualizePathStyle: { stroke: '#0af' }, ignoreCreeps: false });
           }
         }
 
@@ -81,7 +81,7 @@ const roleHauler = {
         });
         if (target) {
           if (creep.transfer(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-            creep.travelTo(target, { visualizePathStyle: { stroke: '#0af' } });
+            creep.travelTo(target, { visualizePathStyle: { stroke: '#0af' }, ignoreCreeps: false });
           }
         }
       }

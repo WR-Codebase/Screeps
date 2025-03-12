@@ -14,11 +14,12 @@ module.exports = {
       towers.forEach(tower => {
         // Find the closest hostile unit
         const closestHostile = tower.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
-        if (closestHostile) {
+        // If there is a closest hostile and it's not an ally, attack it
+        if (closestHostile && !global.allies.has(closestHostile.owner.username)) {
           // Attack the closest hostile unit
           tower.attack(closestHostile);
-          // Check if energy is over 500 and if so, find the most damaged structure and repair
         } else if (tower.store.getUsedCapacity(RESOURCE_ENERGY) > 850) {
+          // Check if energy is over 500 and if so, find the most damaged structure and repair
           // If no hostiles and energy is over 50%, find the most damaged structure and repair except for roads filter by structure.hits <= 200000
           const targets = tower.room.find(FIND_STRUCTURES, {
             filter: (structure) => structure.hits < structure.hitsMax

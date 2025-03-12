@@ -99,6 +99,9 @@ const roleHarvester = {
             maxOps: 100      // Limits CPU spent on pathfinding
           });
         }
+      } else {
+        // Drop all energy on the ground
+        creep.drop(RESOURCE_ENERGY);
       }
     }
   }

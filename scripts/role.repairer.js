@@ -5,6 +5,7 @@ const roleRepairer = {
   run: function (creep) {
     if (creep.store[RESOURCE_ENERGY] === 0) {
       delete creep.memory.target;
+      creep.memory.energyPriority = ['CONTAINER', 'CONTAINER_STORAGE', 'DROPPED_RESOURCE', 'SOURCE'];
       jobs.collect(creep);
     }
     if (creep.store[RESOURCE_ENERGY] > 0) {

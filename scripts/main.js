@@ -4,6 +4,9 @@ const towerManager = require('towerManager');
 
 module.exports.loop = function () {
   try {
+    if (global.allies === undefined)
+      global.allies = new Set(["kotyara", "suyu", "dodzai", "Pwk", "WoodenRobot", "Belthazor"]);
+
     // Run rooms
     roomManager.run();
 
@@ -13,17 +16,14 @@ module.exports.loop = function () {
     // Run towers
     towerManager.run();
 
-    // Periodically clear memory
-    //if (Game.time % 10 === 0) purgeMemory();
-
-    // Log CPU and Memory usage every 5 ticks
-    if (Game.time % 1 === 0){
+    if (Game.time % 1 === 0) {
       console.log(`Tick: ${Game.time} | CPU: ${Game.cpu.getUsed().toFixed(2)} | Memory: ${JSON.stringify(RawMemory.get().length)} bytes`);
+      // Periodically clear memory
       if (RawMemory.get().length > 2000000) {
         console.log(`[WARN] Memory usage is over 2MB!`);
         purgeMemory();
       }
-    } 
+    }
   } catch (e) {
     console.log(`Error in main loop: ${e}`);
   };
@@ -35,8 +35,6 @@ module.exports.loop = function () {
  */
 function purgeMemory() {
   for (const name of Object.keys(Memory.creeps)) {
-    if (!Game.creeps[name]) {
-      delete Memory.creeps[name];
-    }
+    if (!Game.creeps[name]) delete Memory.creeps[name];
   }
 }

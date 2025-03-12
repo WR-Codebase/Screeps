@@ -1,5 +1,6 @@
 const linkManager = require("./linkManager");
 const roomPlanner = require("./roomPlanner");
+const distanceTransform = require("./distanceTransform");
 
 const roomManager = {
   run: function () {
@@ -9,6 +10,8 @@ const roomManager = {
       for (const roomName in Game.rooms) {
         //console.log(`Checking room ${roomName}`);
         const room = Game.rooms[roomName];
+        roomPlanner.run(room);
+        
         //if (Game.time % 10 === 0) roomPlanner.drawChecker(room);
         if (room.controller && room.controller.my) {
           // Check for spawns
@@ -131,7 +134,7 @@ const roomManager = {
 
             // Once we have nurses we can support more workers
             if (workers.length < 3 && nurses.length > 0) {
-              //wrSpawnCreep(spawn, 'worker', [WORK, CARRY, MOVE], []);
+              this.wrSpawnCreep(spawn, 'worker', [WORK, CARRY, MOVE], [], {}, 16 * 50);
             }
 
             // If there are no repairers and any building is less than full health spawn a repairer
