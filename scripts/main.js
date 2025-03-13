@@ -7,6 +7,8 @@ module.exports.loop = function () {
     if (global.allies === undefined)
       global.allies = new Set(["kotyara", "suyu", "dodzai", "Pwk", "WoodenRobot", "Belthazor"]);
 
+    if (!Memory.creeps) Memory.creeps = {};
+
     // Run rooms
     roomManager.run();
 
@@ -15,6 +17,10 @@ module.exports.loop = function () {
 
     // Run towers
     towerManager.run();
+
+
+    // Run Inter-Room Creeps
+
 
     if (Game.time % 1 === 0) {
       console.log(`Tick: ${Game.time} | CPU: ${Game.cpu.getUsed().toFixed(2)} | Memory: ${JSON.stringify(RawMemory.get().length)} bytes`);

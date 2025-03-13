@@ -16,65 +16,73 @@ const roomPlanner = {
     { level: 8, structures: [{ name: STRUCTURE_SPAWN, quantity: 3 }, { name: STRUCTURE_EXTENSION, quantity: 60 }, { name: STRUCTURE_TOWER, quantity: 6 }, { name: STRUCTURE_STORAGE, quantity: 1 }, { name: STRUCTURE_LINK, quantity: 6 }, { name: STRUCTURE_EXTRACTOR, quantity: 1 }, { name: STRUCTURE_LAB, quantity: 10 }, { name: STRUCTURE_TERMINAL, quantity: 1 }, { name: STRUCTURE_FACTORY, quantity: 1 }, { name: STRUCTURE_OBSERVER, quantity: 1 }, { name: STRUCTURE_POWER_SPAWN, quantity: 1 }, { name: STRUCTURE_NUKER, quantity: 1 }] }
   ],
   run: function (room) {
+    try {
+      console.log(`[INFO] Running room planner for room ${room.name}`);
 
-    const constructionSites = room.find(FIND_MY_CONSTRUCTION_SITES);
-    if (constructionSites.length > 0) {
-      const site = constructionSites[0];
-    } else {
+      // If room is not mine, stop processing
+      if (!room.controller || !room.controller.my) return;
 
-      // Evaluate next structure to build by level and priority
-      const nextStructure = this.getNextConstruction(room);
-      //console.log(`Next structure to build: ${nextStructure}`);
+      const constructionSites = room.find(FIND_MY_CONSTRUCTION_SITES);
+      if (constructionSites.length > 0) {
+        const site = constructionSites[0];
+      } else {
 
-      if (nextStructure !== null) {
-        // Next structure has been identified, generate optimal locations
+        // Evaluate next structure to build by level and priority
+        const nextStructure = this.getNextConstruction(room);
+        //console.log(`Next structure to build: ${nextStructure}`);
 
-        // start with the distance transform
+        if (nextStructure !== null) {
+          // Next structure has been identified, generate optimal locations
 
-        const distanceGrid = distanceTransform(room.name);
+          // start with the distance transform
 
-        //const dt = utils.getDistanceTransform(room.name, { visual: true });
-        // get position of the spawn
-        //const spawn = room.find(FIND_MY_SPAWNS)[0];
-        //const floodFill = utils.getPositionsByPathCost(room.name, [spawn.pos], { visual: true });
+          const distanceGrid = distanceTransform(room.name);
 
-        //console.log(`[INFO] Distance transform grid for room ${room.name}: ${JSON.stringify(grid)}`);
+          //const dt = utils.getDistanceTransform(room.name, { visual: true });
+          // get position of the spawn
+          //const spawn = room.find(FIND_MY_SPAWNS)[0];
+          //const floodFill = utils.getPositionsByPathCost(room.name, [spawn.pos], { visual: true });
 
-        // Generate Grid Array [x][y]{value terrainType, structure} array, populate with null for unknown values
-        let gridArray = [];
-        for (let x = 0; x < 50; x++) {
-          gridArray[x] = [];
-          for (let y = 0; y < 50; y++) {
-            const structureArr = room.lookForAt(LOOK_STRUCTURES, x, y) || [];
-            const structureType = structureArr.length > 0 ? structureArr[0].structureType : null;
-            gridArray[x][y] = { value: distanceGrid.get(x, y), terrainType: room.getTerrain().get(x, y), structure: structureType };
+          //console.log(`[INFO] Distance transform grid for room ${room.name}: ${JSON.stringify(grid)}`);
+
+          // Generate Grid Array [x][y]{value terrainType, structure} array, populate with null for unknown values
+          let gridArray = [];
+          for (let x = 0; x < 50; x++) {
+            gridArray[x] = [];
+            for (let y = 0; y < 50; y++) {
+              const structureArr = room.lookForAt(LOOK_STRUCTURES, x, y) || [];
+              const structureType = structureArr.length > 0 ? structureArr[0].structureType : null;
+              gridArray[x][y] = { value: distanceGrid.get(x, y), terrainType: room.getTerrain().get(x, y), structure: structureType };
+            }
           }
-        }
 
-        // Plan roads
-        gridArray = this.planRoads(room, gridArray);
-        // visualize roads
+          // Plan roads
+          gridArray = this.planRoads(room, gridArray);
+          // visualize roads
 
-        for (let x = 0; x < 50; x++) {
-          for (let y = 0; y < 50; y++) {
-            if (gridArray[x][y].structure === "road") {
-              room.visual.circle(x, y, { fill: 'grey', radius: 0.3 });
+          for (let x = 0; x < 50; x++) {
+            for (let y = 0; y < 50; y++) {
+              if (gridArray[x][y].structure === "road") {
+                room.visual.circle(x, y, { fill: 'grey', radius: 0.3 });
+              }
+            }
+          }
+
+        } else {
+          // All identified buildings for this level are complete. Now switch to buildings which are not in the matrix.
+
+          // If a creep is on a white tile that does not have a road already, build a road
+          for (const creep of room.find(FIND_MY_CREEPS)) {
+            if (!this.isBlackTile(creep.pos.x, creep.pos.y)
+              && room.lookForAt(LOOK_STRUCTURES, creep.pos.x, creep.pos.y).length === 0) {
+              //room.createConstructionSite(creep.pos.x, creep.pos.y, STRUCTURE_ROAD);
+              break;
             }
           }
         }
-
-      } else {
-        // All identified buildings for this level are complete. Now switch to buildings which are not in the matrix.
-
-        // If a creep is on a white tile that does not have a road already, build a road
-        for (const creep of room.find(FIND_MY_CREEPS)) {
-          if (!this.isBlackTile(creep.pos.x, creep.pos.y)
-            && room.lookForAt(LOOK_STRUCTURES, creep.pos.x, creep.pos.y).length === 0) {
-            //room.createConstructionSite(creep.pos.x, creep.pos.y, STRUCTURE_ROAD);
-            break;
-          }
-        }
       }
+    } catch (e) {
+      console.log(`Error in roomPlanner.run(): ${e}`);
     }
   },
   /**

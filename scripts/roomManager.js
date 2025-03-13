@@ -128,14 +128,14 @@ const roomManager = {
           // If there are less than two workers, spawn one.
           const workers = _.filter(Game.creeps, (creep) => creep.memory.role === 'worker');
 
-          if (workers.length < 2) {
-            this.wrSpawnCreep(spawn, 'worker', [WORK, CARRY, MOVE], [], {}, 16 * 50);
+          if (workers.length < 1) {
+            this.wrSpawnCreep(spawn, 'worker', [WORK, CARRY, MOVE], [], {}, 20 * 50);
           } else {
 
             // Once we have nurses we can support more workers
-            if (workers.length < 3 && nurses.length > 0) {
-              this.wrSpawnCreep(spawn, 'worker', [WORK, CARRY, MOVE], [], {}, 16 * 50);
-            }
+            //if (workers.length < 3 && nurses.length > 0) 
+              //this.wrSpawnCreep(spawn, 'worker', [WORK, CARRY, MOVE], [], {}, 16 * 50);
+            
 
             // If there are no repairers and any building is less than full health spawn a repairer
             const repairers = _.filter(Game.creeps, (creep) => creep.memory.role === 'repairer');
@@ -162,10 +162,20 @@ const roomManager = {
             }
 
             // If there are no remote workers, spawn one
-            const remoteWorkers = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteWorker');
-            if (remoteWorkers.length < 3)
+            //const remoteWorkers = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteWorker');
+            //if (remoteWorkers.length < 3)
               //this.wrSpawnCreep(spawn, 'remoteWorker', [WORK, CARRY, MOVE], [], {}, 16 * 50);
             
+            // If there are no remote harvesters, spawn one
+            //const remoteHarvesters = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteHarvester');
+            //if (remoteHarvesters.length < 1)
+              //this.wrSpawnCreep(spawn, 'remoteHarvester', [WORK], [CARRY, MOVE], {}, 16 * 50);
+
+            // If there are no remote haulers, spawn one
+            //const remoteHaulers = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteHauler');
+            //if (remoteHaulers.length < 1)
+              //this.wrSpawnCreep(spawn, 'remoteHauler', [CARRY, MOVE], [], {}, 16 * 50);
+
             // Once every 10 ticks, check if adjacent rooms are claimable
             if (Game.time % 10 === 0) {
               // If there isn't already a claimer, make one.
