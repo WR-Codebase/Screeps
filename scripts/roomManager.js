@@ -129,7 +129,7 @@ const roomManager = {
           const workers = _.filter(Game.creeps, (creep) => creep.memory.role === 'worker');
 
           if (workers.length < 1) {
-            this.wrSpawnCreep(spawn, 'worker', [WORK, CARRY, MOVE], [], {}, 20 * 50);
+            this.wrSpawnCreep(spawn, 'worker', [WORK, CARRY, CARRY, CARRY], [MOVE], {}, 5 * 250);
           } else {
 
             // Once we have nurses we can support more workers

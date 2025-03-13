@@ -1,4 +1,5 @@
 const Traveler = require('Traveler');
+const trafficManager = require('screeps-traffic-manager');
 /**
  * The Hauler role is responsible for carrying energy from drop harvesters to storage or other structures.
  * @type {{run: roleHauler.run, collectEnergy: roleHauler.collectEnergy, deliverEnergy: roleHauler.deliverEnergy}}
