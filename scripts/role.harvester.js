@@ -93,6 +93,18 @@ const roleHarvester = {
       creep.drop(RESOURCE_ENERGY);
     } else {
       // Proceed to harvest from the assigned source
+        // If there's a container next to the source move there first
+        const container = source.pos.findInRange(FIND_STRUCTURES, 1, {
+          filter: (structure) => structure.structureType === STRUCTURE_CONTAINER
+        })[0];
+        if (container) {
+          creep.travelTo(container, {
+            visualizePathStyle: { stroke: '#fa0' },
+            ignoreCreeps: false,
+            reusePath: 20,  // Caches path for 20 ticks
+            maxOps: 100      // Limits CPU spent on pathfinding
+          });
+        }
       //console.log(`Harvester ${creep.memory.name} is assigned to source ${source.id}`);
       if (creep.harvest(source) === ERR_NOT_IN_RANGE) {
         creep.travelTo(source, {

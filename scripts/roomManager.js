@@ -10,6 +10,7 @@ const roomManager = {
       for (const roomName in Game.rooms) {
         //console.log(`Checking room ${roomName}`);
         const room = Game.rooms[roomName];
+
         roomPlanner.run(room);
 
         //if (Game.time % 10 === 0) roomPlanner.drawChecker(room);
@@ -65,42 +66,15 @@ const roomManager = {
 
         const harvesters = _.filter(Game.creeps, (creep) => creep.memory.role === 'harvester' && creep.memory.sourceId === source.id && creep.memory.room === room.name);
         //console.log(`[DEBUG] harvesters: ${harvesters} for source ${source.id}`);
-        // returns no harvesters for the first source: harvesters:  for source 5bbcaa299099fc012e630f75
-        //console.log(`[DEBUG] harvesters.length: ${harvesters.length}`);
         if (harvesters.length < 1) {
           let index = 0;
 
-          const body = [WORK, MOVE, CARRY]; // Only 1 MOVE part to reach the source
-
-          // Get source object and its energy capacity
-          const sourceObject = Game.getObjectById(source.id);
-          const energyCapacity = sourceObject.energyCapacity; // 3000, 4000, or 1500
-
-          // Calculate one-way path distance
-          const path = spawn.pos.findPathTo(sourceObject.pos, { ignoreCreeps: true });
-          const distance = path.length;
-
-          // Calculate optimal WORK parts based on energy capacity and one-way trip
-          const workParts = Math.min(Math.floor(energyCapacity / (HARVEST_POWER * (300 - distance))), 5);
-
-          // Add calculated WORK parts, ensuring it doesn't exceed available energy
-          while (
-            body.length < workParts + 1 && // +1 for the MOVE part
-            body.reduce((sum, part) => sum + BODYPART_COST[part], 0) + BODYPART_COST[WORK] <= spawn.room.energyAvailable
-          ) {
-            body.push(WORK);
-          }
-
-          // Spawn the harvester
-
-          // We are moving to a new naming convention `${role}_${roomName}_${index}` where index is the (0-indexed) number of creeps of that role in the room
-          // TODO fix this. For now we'll use game time as the index
+          const pattern = [WORK]; // Only 1 MOVE part to reach the source
+          const suffix = [CARRY, MOVE]; // Add a MOVE part to the end of the body
           const name = `harvester_${room.name}_${Game.time}`;
-
-          //const name = `harvester_${room.name}_${index}`;
           const memory = { name: name, role: 'harvester', room: room.name, index: index, sourceId: source.id };
 
-          spawn.spawnCreep(body, name, { memory });
+          this.wrSpawnCreep(spawn, 'harvester', pattern, suffix, memory, 700); // up to 6 work parts, 1 carry, 1 move
         }
       }
 
@@ -133,22 +107,8 @@ const roomManager = {
         const workers = _.filter(Game.creeps, (creep) => creep.memory.role === 'worker');
         console.log(`[DEBUG] workers: ${workers.length}`);
         if (workers.length < 1) {
-          this.wrSpawnCreep(spawn, 'worker', [WORK, CARRY, CARRY, CARRY, MOVE], [], {}, 1500);
+          this.wrSpawnCreep(spawn, 'worker', [WORK, CARRY, CARRY, CARRY, MOVE], [], {}, 1800); // total per pattern = 300
         } else {
-
-          // Find all containers that are NOT near spawns
-          const nonSpawnContainers = _.filter(Game.rooms[room.name].find(FIND_STRUCTURES),
-            (s) => s.structureType === STRUCTURE_CONTAINER &&
-              !s.pos.findInRange(FIND_MY_SPAWNS, 1).length
-          );
-
-          // Check if ALL non-spawn-adjacent containers are FULL
-          const allNonSpawnContainersFull = nonSpawnContainers.every(c => c.store.getFreeCapacity(RESOURCE_ENERGY) === 0);
-
-          // If all containers except ones near spawns are full, spawn an extra worker
-          if (workers.length < 2 && allNonSpawnContainersFull)
-            this.wrSpawnCreep(spawn, 'worker', [WORK, CARRY, CARRY, CARRY, MOVE], [], {}, 1500);
-
 
           // If there are no repairers and any building is less than full health spawn a repairer
           const repairers = _.filter(Game.creeps, (creep) => creep.memory.role === 'repairer');

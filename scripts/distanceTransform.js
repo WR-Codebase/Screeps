@@ -1,5 +1,5 @@
 const distanceTransform = function (roomName) {
-  let vis = new RoomVisual(roomName);
+  //let vis = new RoomVisual(roomName);
   const terrain = Game.map.getRoomTerrain(roomName);
   let distanceMap = new PathFinder.CostMatrix();
 
@@ -62,6 +62,7 @@ const distanceTransform = function (roomName) {
   if (max - min < 1) max = min + 1;
   if (min < 1 || isNaN(min)) min = 1;
 
+  /**
   // ✅ Render Heatmap (Only for the buildable area)
   for (let y = 1; y < 49; ++y) {
     for (let x = 1; x < 49; ++x) {
@@ -74,11 +75,11 @@ const distanceTransform = function (roomName) {
         vis.circle(x, y, {
           radius: Math.max(value / 12),
           fill: color,
-          opacity: 0.5
+          opacity: 0.95
         });
       }
     }
-  }
+  } */
 
   return distanceMap;
 };
