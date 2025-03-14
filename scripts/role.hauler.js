@@ -1,5 +1,5 @@
 const Traveler = require('Traveler');
-const trafficManager = require('screeps-traffic-manager');
+//const trafficManager = require('screeps-traffic-manager');
 /**
  * The Hauler role is responsible for carrying energy from drop harvesters to storage or other structures.
  * @type {{run: roleHauler.run, collectEnergy: roleHauler.collectEnergy, deliverEnergy: roleHauler.deliverEnergy}}
@@ -31,16 +31,29 @@ const roleHauler = {
       console.log(`Hauler ${creep.name} has an invalid source ID: ${creep.memory.sourceId}`);
       return;
     }
-  
+
     // Look for dropped energy within 1 tile of the assigned source
     const droppedEnergy = source.pos.findInRange(FIND_DROPPED_RESOURCES, 1, {
       filter: (resource) => resource.resourceType === RESOURCE_ENERGY
     });
-  
+
+    // Also look for a container near the source
+    const container = source.pos.findInRange(FIND_STRUCTURES, 1, {
+      filter: (structure) => structure.structureType === STRUCTURE_CONTAINER
+    });
+
     // Move to the dropped energy and pick it up
     if (droppedEnergy.length > 0) {
       if (creep.pickup(droppedEnergy[0]) === ERR_NOT_IN_RANGE) {
         creep.travelTo(droppedEnergy[0], { visualizePathStyle: { stroke: '#0af' } });
+      }
+      return;
+    }
+
+    // Move to the container and withdraw energy from it
+    if (container.length > 0) {
+      if (creep.withdraw(container[0], RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+        creep.travelTo(container[0], { visualizePathStyle: { stroke: '#0af' } });
       }
       return;
     }
@@ -56,33 +69,22 @@ const roleHauler = {
     if (tower && creep.transfer(tower, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
       creep.travelTo(tower, { visualizePathStyle: { stroke: '#0af' } });
     } else {
-      // Then container
-      const container = creep.pos.findClosestByPath(FIND_STRUCTURES, {
+      // Then container not near a source
+      let container = creep.pos.findClosestByPath(FIND_STRUCTURES, {
         filter: (structure) => {
           return (structure.structureType === STRUCTURE_CONTAINER)
-            && structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
+            && structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+            && !structure.pos.findInRange(FIND_SOURCES, 1).length;
         }
-      });
-      if (creep.transfer(container, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+      }) || [];
+      if (container && creep.transfer(container, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
         creep.travelTo(container, { visualizePathStyle: { stroke: '#0af' }, ignoreCreeps: false });
       } else {
-        // If there is a storage with available capacity, deliver to it, otherwise deliver to the next spawn with capacity
+        // If there is a storage with available capacity, deliver to it
 
         if (creep.room.storage && creep.room.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
           if (creep.transfer(creep.room.storage, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
             creep.travelTo(creep.room.storage, { visualizePathStyle: { stroke: '#0af' }, ignoreCreeps: false });
-          }
-        }
-
-        const target = creep.pos.findClosestByPath(FIND_STRUCTURES, {
-          filter: (structure) => {
-            return (structure.structureType === STRUCTURE_STORAGE)
-              && structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
-          }
-        });
-        if (target) {
-          if (creep.transfer(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-            creep.travelTo(target, { visualizePathStyle: { stroke: '#0af' }, ignoreCreeps: false });
           }
         }
       }

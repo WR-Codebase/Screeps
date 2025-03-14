@@ -133,12 +133,21 @@ const roomManager = {
         const workers = _.filter(Game.creeps, (creep) => creep.memory.role === 'worker');
         console.log(`[DEBUG] workers: ${workers.length}`);
         if (workers.length < 1) {
-          this.wrSpawnCreep(spawn, 'worker', [WORK, CARRY, CARRY, CARRY, MOVE], [], {}, 5 * 300);
+          this.wrSpawnCreep(spawn, 'worker', [WORK, CARRY, CARRY, CARRY, MOVE], [], {}, 1500);
         } else {
 
-          // Once we have nurses we can support more workers
-          //if (workers.length < 3 && nurses.length > 0) 
-          //this.wrSpawnCreep(spawn, 'worker', [WORK, CARRY, MOVE], [], {}, 16 * 50);
+          // Find all containers that are NOT near spawns
+          const nonSpawnContainers = _.filter(Game.rooms[room.name].find(FIND_STRUCTURES),
+            (s) => s.structureType === STRUCTURE_CONTAINER &&
+              !s.pos.findInRange(FIND_MY_SPAWNS, 1).length
+          );
+
+          // Check if ALL non-spawn-adjacent containers are FULL
+          const allNonSpawnContainersFull = nonSpawnContainers.every(c => c.store.getFreeCapacity(RESOURCE_ENERGY) === 0);
+
+          // If all containers except ones near spawns are full, spawn an extra worker
+          if (workers.length < 2 && allNonSpawnContainersFull)
+            this.wrSpawnCreep(spawn, 'worker', [WORK, CARRY, CARRY, CARRY, MOVE], [], {}, 1500);
 
 
           // If there are no repairers and any building is less than full health spawn a repairer

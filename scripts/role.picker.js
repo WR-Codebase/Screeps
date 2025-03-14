@@ -1,22 +1,15 @@
 const jobs = require('jobs');
 
-/**
- * The Picker role is responsible for cleaning up any resources that have fallen on the ground
- * before they can decay, and dropping them off in the correct storage receptacle.
- * @type {{bodyTemplate: *[], defaultMode: string, roleName: string, run: rolePicker.run}}
- */
 const rolePicker = {
-  // Default properties
   roleName: 'resourcePicker',
   bodyTemplate: [CARRY, MOVE, CARRY, MOVE],
   defaultMode: 'picking',
 
   /** @param {Creep} creep **/
   run: function (creep) {
-    // The picker creep picks up temporary resources (tombstones, ruins, and dropped energy) and delivers them to storage.
     if (creep.memory.picking === undefined) creep.memory.picking = false;
-  
-    // Switch state between picking and delivering
+
+    // Switch between collecting and delivering
     if (creep.memory.picking && creep.store.getFreeCapacity() === 0) {
       creep.memory.picking = false;
       creep.say('🚚 Delivering');
@@ -25,68 +18,124 @@ const rolePicker = {
       creep.memory.picking = true;
       creep.say('🔄 Collect');
     }
-  
+
     if (creep.memory.picking) {
-      // Set resource priority
-      creep.memory.energyPriority = ['TOMBSTONE', 'RUIN', 'STORAGE', 'DROPPED_RESOURCE'];
-      jobs.collect(creep);
-  
-      // Check for minerals in tombstones if energy is unavailable
-      if (creep.store.getFreeCapacity() > 0) {
-        const tombstone = creep.pos.findClosestByPath(FIND_TOMBSTONES, {
-          filter: (t) => _.sum(t.store) > 0
-        });
-  
-        if (tombstone) {
-          const mineralType = Object.keys(tombstone.store).find(type => type !== RESOURCE_ENERGY);
-          if (mineralType && tombstone.store[mineralType] > 0) {
-            if (creep.withdraw(tombstone, mineralType) === ERR_NOT_IN_RANGE) {
-              creep.travelTo(tombstone, { visualizePathStyle: { stroke: '#ff00ff' } });
-            }
-            return;
-          }
-        }
-      }
-  
-      // If nothing is available, switch to delivery
-      if (creep.store.getUsedCapacity() > 0) creep.memory.picking = false;
-  
+      this.collectEnergy(creep);
     } else {
-      // Deliver minerals first, then energy
-      if (creep.room.storage) {
-        const mineralType = Object.keys(creep.store).find(type => type !== RESOURCE_ENERGY);
-        if (mineralType && creep.store[mineralType] > 0) {
-          if (creep.transfer(creep.room.storage, mineralType) === ERR_NOT_IN_RANGE) {
-            creep.travelTo(creep.room.storage, { visualizePathStyle: { stroke: '#ff00ff' } });
-          }
-          return;
-        }
+      this.deliverEnergy(creep);
+    }
+  },
+
+  collectEnergy: function (creep) {
+    // Prioritize picking up resources from tombstones first
+    let target = creep.pos.findClosestByPath(FIND_TOMBSTONES, {
+      filter: (t) => _.sum(t.store) > 0
+    });
+
+    if (target) {
+      let resourceType = Object.keys(target.store).find(type => target.store[type] > 0);
+      if (resourceType && creep.withdraw(target, resourceType) === ERR_NOT_IN_RANGE) {
+        creep.travelTo(target, { visualizePathStyle: { stroke: '#ff00ff' } });
       }
-  
-      // Deliver energy to containers first
-      const container = creep.pos.findClosestByPath(FIND_STRUCTURES, {
-        filter: (s) => s.structureType === STRUCTURE_CONTAINER && s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-      });
-  
-      if (container) {
-        if (creep.transfer(container, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-          creep.travelTo(container, { visualizePathStyle: { stroke: '#0af' } });
-        }
-      } else {
-        // Deliver energy to towers next
-        const tower = creep.pos.findClosestByPath(FIND_STRUCTURES, {
-          filter: (s) => s.structureType === STRUCTURE_TOWER && s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-        });
-  
-        if (tower) {
-          if (creep.transfer(tower, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-            creep.travelTo(tower, { visualizePathStyle: { stroke: '#0af' } });
-          }
-        }
+      return;
+    }
+
+    // Next, check ruins for resources
+    target = creep.pos.findClosestByPath(FIND_RUINS, {
+      filter: (r) => _.sum(r.store) > 0
+    });
+
+    if (target) {
+      let resourceType = Object.keys(target.store).find(type => target.store[type] > 0);
+      if (resourceType && creep.withdraw(target, resourceType) === ERR_NOT_IN_RANGE) {
+        creep.travelTo(target, { visualizePathStyle: { stroke: '#ff00ff' } });
       }
-  
-      // If empty, switch back to picking mode
-      if (creep.store.getUsedCapacity() === 0) creep.memory.picking = true;
+      return;
+    }
+
+    // Check for dropped energy
+    target = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, {
+      filter: (r) => r.resourceType === RESOURCE_ENERGY
+    });
+
+    if (target) {
+      if (creep.pickup(target) === ERR_NOT_IN_RANGE) {
+        creep.travelTo(target, { visualizePathStyle: { stroke: '#ffaa00' } });
+      }
+      return;
+    }
+
+    // Check for containers near sources
+    target = creep.pos.findClosestByPath(FIND_STRUCTURES, {
+      filter: (s) => s.structureType === STRUCTURE_CONTAINER &&
+                     s.store[RESOURCE_ENERGY] > 0 &&
+                     s.pos.findInRange(FIND_SOURCES, 1).length > 0
+    });
+
+    if (target) {
+      if (creep.withdraw(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+        creep.travelTo(target, { visualizePathStyle: { stroke: '#0af' } });
+      }
+      return;
+    }
+
+    // If no other sources of energy are found, collect from storage
+    if (creep.room.storage && creep.room.storage.store[RESOURCE_ENERGY] > 0) {
+      if (creep.withdraw(creep.room.storage, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+        creep.travelTo(creep.room.storage, { visualizePathStyle: { stroke: '#ffaa00' } });
+      }
+      return;
+    }
+  },
+
+  deliverEnergy: function (creep) {
+    // First, deliver minerals to storage
+    if (creep.room.storage) {
+      let mineralType = Object.keys(creep.store).find(type => type !== RESOURCE_ENERGY);
+      if (mineralType && creep.store[mineralType] > 0) {
+        if (creep.transfer(creep.room.storage, mineralType) === ERR_NOT_IN_RANGE) {
+          creep.travelTo(creep.room.storage, { visualizePathStyle: { stroke: '#ff00ff' } });
+        }
+        return;
+      }
+    }
+
+    // Deliver energy to containers that are **not** near sources
+    let target = creep.pos.findClosestByPath(FIND_STRUCTURES, {
+      filter: (s) => s.structureType === STRUCTURE_CONTAINER &&
+                     s.store.getFreeCapacity(RESOURCE_ENERGY) > 0 &&
+                     !s.pos.findInRange(FIND_SOURCES, 1).length
+    });
+
+    if (target) {
+      if (creep.transfer(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+        creep.travelTo(target, { visualizePathStyle: { stroke: '#0af' } });
+      }
+      return;
+    }
+
+    // Deliver energy to towers
+    target = creep.pos.findClosestByPath(FIND_STRUCTURES, {
+      filter: (s) => s.structureType === STRUCTURE_TOWER &&
+                     s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+    });
+
+    if (target) {
+      if (creep.transfer(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+        creep.travelTo(target, { visualizePathStyle: { stroke: '#0af' } });
+      }
+      return;
+    }
+
+    // If there is still energy, switch to nursing until empty
+    if (creep.store[RESOURCE_ENERGY] > 0) {
+      jobs.nourish(creep);
+      return;
+    }
+
+    // If no delivery targets are found, switch back to picking mode
+    if (creep.store.getUsedCapacity() === 0) {
+      creep.memory.picking = true;
     }
   }
 };

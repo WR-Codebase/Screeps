@@ -9,6 +9,9 @@ module.exports.loop = function () {
 
     if (!Memory.creeps) Memory.creeps = {};
 
+    if (global.rooms === undefined)
+      global.rooms = {};
+
     // Run rooms
     roomManager.run();
 
