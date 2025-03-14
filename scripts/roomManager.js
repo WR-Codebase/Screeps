@@ -11,7 +11,7 @@ const roomManager = {
         //console.log(`Checking room ${roomName}`);
         const room = Game.rooms[roomName];
         roomPlanner.run(room);
-        
+
         //if (Game.time % 10 === 0) roomPlanner.drawChecker(room);
         if (room.controller && room.controller.my) {
           // Check for spawns
@@ -113,77 +113,80 @@ const roomManager = {
         this.wrSpawnCreep(spawn, 'nurse', [CARRY, MOVE], [], {}, 16 * 50);
       } else {
 
-        numHaulers = _.filter(Game.creeps, (creep) => creep.memory.role === 'hauler' && creep.memory.room === room.name).length;
+        let numHaulers = _.filter(Game.creeps, (creep) => creep.memory.role === 'hauler' && creep.memory.room === room.name).length;
         if (numHaulers < numSources && room.find(FIND_STRUCTURES, { filter: { structureType: STRUCTURE_CONTAINER } }).length > 0) {
           // Similarly, if there are no haulers, spawn one, for each source.
           for (const source of sources) {
+
+            // if this soure has a link within three tiles, don't spawn a hauler
+            const link = source.pos.findInRange(FIND_MY_STRUCTURES, 3, { filter: { structureType: STRUCTURE_LINK } })[0];
+            if (link) continue;
             const haulers = _.filter(Game.creeps, (creep) => creep.memory.role === 'hauler' && creep.memory.sourceId === source.id);
             // If haulers < 1 and there are containers in the room
             if (haulers.length < 1) {
               this.wrSpawnCreep(spawn, 'hauler', [CARRY, MOVE], [], { sourceId: source.id }, 16 * 50);
             }
           }
+        }
+
+        // If there are less than two workers, spawn one.
+        const workers = _.filter(Game.creeps, (creep) => creep.memory.role === 'worker');
+        console.log(`[DEBUG] workers: ${workers.length}`);
+        if (workers.length < 1) {
+          this.wrSpawnCreep(spawn, 'worker', [WORK, CARRY, CARRY, CARRY, MOVE], [], {}, 5 * 300);
         } else {
 
-          // If there are less than two workers, spawn one.
-          const workers = _.filter(Game.creeps, (creep) => creep.memory.role === 'worker');
+          // Once we have nurses we can support more workers
+          //if (workers.length < 3 && nurses.length > 0) 
+          //this.wrSpawnCreep(spawn, 'worker', [WORK, CARRY, MOVE], [], {}, 16 * 50);
 
-          if (workers.length < 1) {
-            this.wrSpawnCreep(spawn, 'worker', [WORK, CARRY, CARRY, CARRY], [MOVE], {}, 5 * 250);
-          } else {
 
-            // Once we have nurses we can support more workers
-            //if (workers.length < 3 && nurses.length > 0) 
-              //this.wrSpawnCreep(spawn, 'worker', [WORK, CARRY, MOVE], [], {}, 16 * 50);
-            
+          // If there are no repairers and any building is less than full health spawn a repairer
+          const repairers = _.filter(Game.creeps, (creep) => creep.memory.role === 'repairer');
+          const damagedBuildings = room.find(FIND_STRUCTURES, { filter: (structure) => structure.hits < structure.hitsMax });
+          if (repairers.length < 1 && damagedBuildings.length > 0) {
+            this.wrSpawnCreep(spawn, 'repairer', [WORK, CARRY, MOVE], [], {}, 8 * 50);
+          }
 
-            // If there are no repairers and any building is less than full health spawn a repairer
-            const repairers = _.filter(Game.creeps, (creep) => creep.memory.role === 'repairer');
-            const damagedBuildings = room.find(FIND_STRUCTURES, { filter: (structure) => structure.hits < structure.hitsMax });
-            if (repairers.length < 1 && damagedBuildings.length > 0) {
-              this.wrSpawnCreep(spawn, 'repairer', [WORK, CARRY, MOVE], [], {}, 8 * 50);
-            }
+          //     minCreeps('picker', 2, [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 'HomeSpawn', roomName);
 
-            //     minCreeps('picker', 2, [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 'HomeSpawn', roomName);
+          // If there are no pickers and there are resources or tombstones on the ground, spawn a picker
+          const pickers = _.filter(Game.creeps, (creep) => creep.memory.role === 'picker');
+          const droppedResources = room.find(FIND_DROPPED_RESOURCES);
+          const tombstones = room.find(FIND_TOMBSTONES);
+          if (pickers.length < 1) {
+            this.wrSpawnCreep(spawn, 'picker', [CARRY, MOVE], [], {}, 16 * 50);
+          }
 
-            // If there are no pickers and there are resources or tombstones on the ground, spawn a picker
-            const pickers = _.filter(Game.creeps, (creep) => creep.memory.role === 'picker');
-            const droppedResources = room.find(FIND_DROPPED_RESOURCES);
-            const tombstones = room.find(FIND_TOMBSTONES);
-            if (pickers.length < 1) {
-              this.wrSpawnCreep(spawn, 'picker', [CARRY, MOVE], [], {}, 16 * 50);
-            }
+          // If there is a link, spawn one minim to manage it
+          const links = room.find(FIND_MY_STRUCTURES, { filter: { structureType: STRUCTURE_LINK } });
+          const minims = _.filter(Game.creeps, (creep) => creep.memory.role === 'minim'); 90
+          if (links.length > 0 && minims.length < 1) {
+            this.wrSpawnCreep(spawn, 'minim', [CARRY, MOVE], [], {}, 100);
+          }
 
-            // If there is a link, spawn one minim to manage it
-            const links = room.find(FIND_MY_STRUCTURES, { filter: { structureType: STRUCTURE_LINK } });
-            const minims = _.filter(Game.creeps, (creep) => creep.memory.role === 'minim'); 90
-            if (links.length > 0 && minims.length < 1) {
-              this.wrSpawnCreep(spawn, 'minim', [CARRY, MOVE], [], {}, 100);
-            }
+          // If there are no remote workers, spawn one
+          //const remoteWorkers = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteWorker');
+          //if (remoteWorkers.length < 3)
+          //this.wrSpawnCreep(spawn, 'remoteWorker', [WORK, CARRY, MOVE], [], {}, 16 * 50);
 
-            // If there are no remote workers, spawn one
-            //const remoteWorkers = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteWorker');
-            //if (remoteWorkers.length < 3)
-              //this.wrSpawnCreep(spawn, 'remoteWorker', [WORK, CARRY, MOVE], [], {}, 16 * 50);
-            
-            // If there are no remote harvesters, spawn one
-            //const remoteHarvesters = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteHarvester');
-            //if (remoteHarvesters.length < 1)
-              //this.wrSpawnCreep(spawn, 'remoteHarvester', [WORK], [CARRY, MOVE], {}, 16 * 50);
+          // If there are no remote harvesters, spawn one
+          //const remoteHarvesters = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteHarvester');
+          //if (remoteHarvesters.length < 1)
+          //this.wrSpawnCreep(spawn, 'remoteHarvester', [WORK], [CARRY, MOVE], {}, 16 * 50);
 
-            // If there are no remote haulers, spawn one
-            //const remoteHaulers = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteHauler');
-            //if (remoteHaulers.length < 1)
-              //this.wrSpawnCreep(spawn, 'remoteHauler', [CARRY, MOVE], [], {}, 16 * 50);
+          // If there are no remote haulers, spawn one
+          //const remoteHaulers = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteHauler');
+          //if (remoteHaulers.length < 1)
+          //this.wrSpawnCreep(spawn, 'remoteHauler', [CARRY, MOVE], [], {}, 16 * 50);
 
-            // Once every 10 ticks, check if adjacent rooms are claimable
-            if (Game.time % 10 === 0) {
-              // If there isn't already a claimer, make one.
-              //const drones = _.filter(Game.creeps, (creep) => creep.memory.role === 'drone');
-              //if (drones.length < 1)
-                //this.wrSpawnCreep(spawn, 'drone', [CLAIM, MOVE], [], {}, 1000);
+          // Once every 10 ticks, check if adjacent rooms are claimable
+          if (Game.time % 10 === 0) {
+            // If there isn't already a claimer, make one.
+            //const drones = _.filter(Game.creeps, (creep) => creep.memory.role === 'drone');
+            //if (drones.length < 1)
+            //this.wrSpawnCreep(spawn, 'drone', [CLAIM, MOVE], [], {}, 1000);
 
-            }
           }
         }
       }

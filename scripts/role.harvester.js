@@ -15,7 +15,7 @@ const roleHarvester = {
       // get number of sources in the room
       const sources = creep.room.find(FIND_SOURCES);
       maxIndex = sources.length;
-      
+
       // Check Memory.creeps for harvesters in this room. If there's more harvesters than there are indexed memory entries, reconstruct the memory
       const harvesters = _.filter(Game.creeps, (c) => c.memory.role === 'harvester' && c.room.name === creep.room.name);
       //console.log(`Found ${harvesters.length} harvesters in room ${creep.room.name}`);
@@ -43,7 +43,7 @@ const roleHarvester = {
     }
 
 
-    // soureId
+    // sourceId
     if (!creep.memory.sourceId) {
       // Find a source that does not yet have a harvester
       console.log(`Harvester ${creep.name} does not have a source assigned`);
@@ -65,43 +65,42 @@ const roleHarvester = {
       // check harvesters in the room for their sources
     }
 
-    // Proceed to harvest from the assigned source
     const source = Game.getObjectById(creep.memory.sourceId);
-    //console.log(`Harvester ${creep.memory.name} is assigned to source ${source.id}`);
-    if (creep.harvest(source) === ERR_NOT_IN_RANGE) {
-      creep.travelTo(source, {
-        visualizePathStyle: { stroke: '#fa0' },
-        ignoreCreeps: false,
-        reusePath: 20,  // Caches path for 20 ticks
-        maxOps: 100      // Limits CPU spent on pathfinding
-      });
+    // Find the link within two spaces from the target source
+    const link = source.pos.findInRange(FIND_MY_STRUCTURES, 2, {
+      filter: (structure) => structure.structureType === STRUCTURE_LINK
+    })[0];
+
+    // if used capacity is greater than 0, attempt to transfer energy to a link
+    if (link && creep.store.getUsedCapacity() > 0) {
+      // Attempt to transfer energy to the link
+      const transferResult = creep.transfer(link, RESOURCE_ENERGY);
+      if (transferResult === OK) {
+        //console.log(`Harvester ${creep.name} transferred energy to link at ${link.pos}`);
+      } else if (transferResult === ERR_NOT_IN_RANGE) {
+        // This should not happen since we're checking for links within 1 tile, but it's a good safety check
+        creep.travelTo(link, {
+          visualizePathStyle: { stroke: '#fa0' },
+          ignoreCreeps: false,
+          reusePath: 20,  // Caches path for 20 ticks
+          maxOps: 100      // Limits CPU spent on pathfinding
+        });
+      }
     }
 
-    // If the creep is full, attempt to transfer energy to a link
+    // If the creep is full, drop the energy on the ground
     if (creep.store.getFreeCapacity() === 0) {
-
-      // Find the link within two spaces from the target source
-      const link = source.pos.findInRange(FIND_MY_STRUCTURES, 2, {
-        filter: (structure) => structure.structureType === STRUCTURE_LINK
-      })[0];
-
-      if (link) {
-        // Attempt to transfer energy to the link
-        const transferResult = creep.transfer(link, RESOURCE_ENERGY);
-        if (transferResult === OK) {
-          //console.log(`Harvester ${creep.name} transferred energy to link at ${link.pos}`);
-        } else if (transferResult === ERR_NOT_IN_RANGE) {
-          // This should not happen since we're checking for links within 1 tile, but it's a good safety check
-          creep.travelTo(link, {
-            visualizePathStyle: { stroke: '#fa0' },
-            ignoreCreeps: false,
-            reusePath: 20,  // Caches path for 20 ticks
-            maxOps: 100      // Limits CPU spent on pathfinding
-          });
-        }
-      } else {
-        // Drop all energy on the ground
-        creep.drop(RESOURCE_ENERGY);
+      creep.drop(RESOURCE_ENERGY);
+    } else {
+      // Proceed to harvest from the assigned source
+      //console.log(`Harvester ${creep.memory.name} is assigned to source ${source.id}`);
+      if (creep.harvest(source) === ERR_NOT_IN_RANGE) {
+        creep.travelTo(source, {
+          visualizePathStyle: { stroke: '#fa0' },
+          ignoreCreeps: false,
+          reusePath: 20,  // Caches path for 20 ticks
+          maxOps: 100      // Limits CPU spent on pathfinding
+        });
       }
     }
   }

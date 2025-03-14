@@ -3,7 +3,8 @@
  * 
  * In an ant colony, the minim is a small worker responsible for carrying food around within the colony.
  * 
- * The minim role in my codebase carries energy from the link closest to storage, to the storage, keeping the link open to receive more energy.
+ * The minim role in my codebase carries energy from the link closest to storage, to the storage, keeping
+ * the link open to receive more energy.
  * 
  */
 
