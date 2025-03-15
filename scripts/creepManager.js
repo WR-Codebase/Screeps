@@ -18,6 +18,7 @@ const roleDrone = require('role.drone');
 const remoteWorker = require('role.remoteWorker');
 const roleRemoteHarvester = require('./role.remoteHarvester');
 const roleRemoteHauler = require('./role.remoteHauler');
+const roleSoldier = require('./role.soldier');
 
 module.exports = {
     // Run creeps
@@ -30,8 +31,10 @@ module.exports = {
       picker: rolePicker,
       minim: roleMinim,
       drone: roleDrone,
+      remoteWorker: remoteWorker,
       remoteHarvester: roleRemoteHarvester,
-      remoteHauler: roleRemoteHauler
+      remoteHauler: roleRemoteHauler,
+      soldier: roleSoldier
     },
 
     run: function () {

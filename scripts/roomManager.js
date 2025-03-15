@@ -11,7 +11,10 @@ const roomManager = {
         //console.log(`Checking room ${roomName}`);
         const room = Game.rooms[roomName];
 
-        roomPlanner.run(room);
+        // Once every ten ticks
+        if (Game.time % 10 === 0) {
+          roomPlanner.run(room);
+        }
 
         //if (Game.time % 10 === 0) roomPlanner.drawChecker(room);
         if (room.controller && room.controller.my) {
@@ -55,7 +58,8 @@ const roomManager = {
   // Run the spawn logic for the room
   runSpawn: function (spawn, room) {
     const creepMemory = Memory.creeps;
-    const numHarvesters = _.filter(Game.creeps, (creep) => creep.memory.role === 'harvester').length;
+    // all filters must include room
+    const numHarvesters = _.filter(Game.creeps, (creep) => creep.memory.role === 'harvester' && creep.memory.room === room.name).length;
     const sources = room.find(FIND_SOURCES);
 
     const numSources = sources.length;
@@ -81,9 +85,8 @@ const roomManager = {
     } else {
 
       // If there is an extension and there are no nurses, spawn a nurse to fill it
-      const extensions = room.find(FIND_MY_STRUCTURES, { filter: { structureType: STRUCTURE_EXTENSION } });
-      const nurses = _.filter(Game.creeps, (creep) => creep.memory.role === 'nurse');
-      if (extensions.length > 0 && nurses.length < 1) {
+      const nurses = _.filter(Game.creeps, (creep) => creep.memory.role === 'nurse' && creep.memory.room === room.name);
+      if (nurses.length < 1) {
         this.wrSpawnCreep(spawn, 'nurse', [CARRY, MOVE], [], {}, 16 * 50);
       } else {
 
@@ -104,14 +107,14 @@ const roomManager = {
         }
 
         // If there are less than two workers, spawn one.
-        const workers = _.filter(Game.creeps, (creep) => creep.memory.role === 'worker');
+        const workers = _.filter(Game.creeps, (creep) => creep.memory.role === 'worker' && creep.memory.room === room.name);
         console.log(`[DEBUG] workers: ${workers.length}`);
-        if (workers.length < 1) {
+        if (workers.length < 2) {
           this.wrSpawnCreep(spawn, 'worker', [WORK, CARRY, CARRY, CARRY, MOVE], [], {}, 1800); // total per pattern = 300
         } else {
 
-          // If there are no repairers and any building is less than full health spawn a repairer
-          const repairers = _.filter(Game.creeps, (creep) => creep.memory.role === 'repairer');
+          // If there are no repairers and any building is less than full health spawn a repairer for the room
+          const repairers = _.filter(Game.creeps, (creep) => creep.memory.role === 'repairer' && creep.memory.room === room.name);
           const damagedBuildings = room.find(FIND_STRUCTURES, { filter: (structure) => structure.hits < structure.hitsMax });
           if (repairers.length < 1 && damagedBuildings.length > 0) {
             this.wrSpawnCreep(spawn, 'repairer', [WORK, CARRY, MOVE], [], {}, 8 * 50);
@@ -120,24 +123,22 @@ const roomManager = {
           //     minCreeps('picker', 2, [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 'HomeSpawn', roomName);
 
           // If there are no pickers and there are resources or tombstones on the ground, spawn a picker
-          const pickers = _.filter(Game.creeps, (creep) => creep.memory.role === 'picker');
-          const droppedResources = room.find(FIND_DROPPED_RESOURCES);
-          const tombstones = room.find(FIND_TOMBSTONES);
+          const pickers = _.filter(Game.creeps, (creep) => creep.memory.role === 'picker' && creep.memory.room === room.name);
           if (pickers.length < 1) {
             this.wrSpawnCreep(spawn, 'picker', [CARRY, MOVE], [], {}, 16 * 50);
           }
 
           // If there is a link, spawn one minim to manage it
           const links = room.find(FIND_MY_STRUCTURES, { filter: { structureType: STRUCTURE_LINK } });
-          const minims = _.filter(Game.creeps, (creep) => creep.memory.role === 'minim'); 90
+          const minims = _.filter(Game.creeps, (creep) => creep.memory.role === 'minim' && creep.memory.room === room.name); 90
           if (links.length > 0 && minims.length < 1) {
             this.wrSpawnCreep(spawn, 'minim', [CARRY, MOVE], [], {}, 100);
           }
 
           // If there are no remote workers, spawn one
-          //const remoteWorkers = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteWorker');
-          //if (remoteWorkers.length < 3)
-          //this.wrSpawnCreep(spawn, 'remoteWorker', [WORK, CARRY, MOVE], [], {}, 16 * 50);
+          const remoteWorkers = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteWorker');
+          if (remoteWorkers.length < 3)
+          this.wrSpawnCreep(spawn, 'remoteWorker', [WORK, CARRY, MOVE], [], {}, 16 * 50);
 
           // If there are no remote harvesters, spawn one
           //const remoteHarvesters = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteHarvester');
@@ -149,12 +150,21 @@ const roomManager = {
           //if (remoteHaulers.length < 1)
           //this.wrSpawnCreep(spawn, 'remoteHauler', [CARRY, MOVE], [], {}, 16 * 50);
 
+          // Spawn a soldier
+          //const soldiers = _.filter(Game.creeps, (creep) => creep.memory.role === 'soldier');
+          //if (soldiers.length < 1)
+          //  Game.spawns['Spawn1'].spawnCreep(
+          //    [ATTACK, ATTACK, ATTACK, MOVE, MOVE, MOVE], 
+          //    'soldier_' + Game.time, 
+          //    { memory: { role: 'soldier' } }
+          //  );
+
           // Once every 10 ticks, check if adjacent rooms are claimable
           if (Game.time % 10 === 0) {
             // If there isn't already a claimer, make one.
-            //const drones = _.filter(Game.creeps, (creep) => creep.memory.role === 'drone');
-            //if (drones.length < 1)
-            //this.wrSpawnCreep(spawn, 'drone', [CLAIM, MOVE], [], {}, 1000);
+            const drones = _.filter(Game.creeps, (creep) => creep.memory.role === 'drone');
+            if (drones.length < 1)
+              this.wrSpawnCreep(spawn, 'drone', [CLAIM, CLAIM, MOVE], [], { targetRoom: 'E55S17' }, 9999);
 
           }
         }

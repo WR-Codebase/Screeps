@@ -1,7 +1,8 @@
 const roleRemoteWorker = {
   run: function(creep) {
-      creep.memory.energyPriority = ['TOMBSTONE', 'RUIN', 'CONTAINER', 'DROPPED_RESOURCE', 'SOURCE'];
-      const travelRoute = ['E56S17', 'E55S17', 'E55S16', 'E55S15'];
+    try {
+      creep.memory.energyPriority = ['STORAGE','TOMBSTONE','RUIN','CONTAINER_STORAGE', 'DROPPED_RESOURCE', 'SOURCE'];
+      const travelRoute = ['E56S17', 'E55S17', 'E55S18'];
 
       if (!creep.memory.status) {
           creep.memory.status = '🔄collect';
@@ -26,6 +27,9 @@ const roleRemoteWorker = {
           creep.say(creep.memory.status);
           creep.memory.previousStatus = creep.memory.status;
       }
+    } catch (e) {
+      console.log(`[ERROR] Remote Worker ${creep.name} encountered an error: ${e.message}`);
+    }
   },
 
   buildAlongRoute: function(creep, route) {
@@ -43,49 +47,63 @@ const roleRemoteWorker = {
   },
 
   collectEnergy: function(creep, route) {
-      if (creep.room.name !== 'E55S16') {
-          let target = null;
 
-          // Prioritize dropped energy
-          if (!target) {
-              target = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES);
-          }
+    let target = null;
+    const energyPriority = creep.memory.energyPriority || ['STORAGE','TOMBSTONE','RUIN','CONTAINER_STORAGE', 'DROPPED_RESOURCE', 'SOURCE'];
 
-          // If no dropped energy, check containers
-          if (!target) {
-              target = creep.pos.findClosestByPath(FIND_STRUCTURES, {
-                  filter: s => s.structureType === STRUCTURE_CONTAINER && s.store[RESOURCE_ENERGY] > 0
-              });
-          }
+    for (const priority of energyPriority) {
+        switch (priority) {
+            case 'STORAGE':
+                target = creep.room.storage && creep.room.storage.store[RESOURCE_ENERGY] > 0 ? creep.room.storage : null;
+                break;
+            case 'TOMBSTONE':
+                target = creep.pos.findClosestByPath(FIND_TOMBSTONES, {
+                    filter: tombstone => tombstone.store[RESOURCE_ENERGY] > 0
+                });
+                break;
+            case 'RUIN':
+                target = creep.pos.findClosestByPath(FIND_RUINS, {
+                    filter: ruin => ruin.store[RESOURCE_ENERGY] > 0
+                });
+                break;
+            case 'CONTAINER_STORAGE':
+                target = creep.pos.findClosestByPath(FIND_STRUCTURES, {
+                    filter: s => s.structureType === STRUCTURE_CONTAINER && s.store[RESOURCE_ENERGY] > 0
+                });
+                break;
+            case 'DROPPED_RESOURCE':
+                target = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, {
+                    filter: res => res.resourceType === RESOURCE_ENERGY
+                });
+                break;
+            case 'SOURCE':
+                target = creep.pos.findClosestByPath(FIND_SOURCES_ACTIVE, {
+                    filter: source => this.hasOpenTile(source)
+                });
+                break;
+        }
+        if (target) break; // Stop searching once a valid energy source is found
+    }
 
-          // If no containers, check sources with open adjacent tiles
-          if (!target) {
-              target = creep.pos.findClosestByPath(FIND_SOURCES, {
-                  filter: s => s.energy > 0 && this.hasOpenTile(s)
-              });
-          }
+    // 🏗️ Move to and collect energy until full
+    if (target) {
+        let actionResult;
+        if (target instanceof Resource) {
+            actionResult = creep.pickup(target);
+        } else if (target instanceof Structure || target instanceof Tombstone || target instanceof Ruin) {
+            actionResult = creep.withdraw(target, RESOURCE_ENERGY);
+        } else if (target instanceof Source) {
+            actionResult = creep.harvest(target);
+        }
 
-          // Move to and collect energy until full
-          if (target) {
-              if (creep.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-                  if (creep.pickup(target) === ERR_NOT_IN_RANGE || creep.withdraw(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE || creep.harvest(target) === ERR_NOT_IN_RANGE) {
-                      creep.moveTo(target, { visualizePathStyle: { stroke: '#ffaa00' } });
-                  }
-                  creep.memory.status = '🔄collect';
-                  return;
-              }
-          }
-      } else {
-        // Creep is in the source keeper room, escape north or south to the nearest exit then havrvest energy in the next room
-        let northExit = creep.room.findExitTo('E55S15');
-        let southExit = creep.room.findExitTo('E55S17');
-
-        // Pick the closest one to creep position
-        let exit = creep.pos.findClosestByPath([northExit, southExit]);
-        creep.moveTo(exit, { visualizePathStyle: { stroke: '#ffaa00' } });
-      }
-      this.moveThroughRooms(creep, route);
-  },
+        if (actionResult === ERR_NOT_IN_RANGE) {
+            creep.moveTo(target, { visualizePathStyle: { stroke: '#ffaa00' } });
+        }
+        creep.memory.status = '🔄collect';
+    } else {
+        this.moveThroughRooms(creep, route);
+    }
+},
 
   hasOpenTile: function(source) {
       let terrain = new Room.Terrain(source.room.name);

@@ -15,9 +15,11 @@ const roomPlanner = {
     { level: 8, structures: [{ name: STRUCTURE_SPAWN, quantity: 3 }, { name: STRUCTURE_EXTENSION, quantity: 60 }, { name: STRUCTURE_TOWER, quantity: 6 }, { name: STRUCTURE_STORAGE, quantity: 1 }, { name: STRUCTURE_LINK, quantity: 6 }, { name: STRUCTURE_EXTRACTOR, quantity: 1 }, { name: STRUCTURE_LAB, quantity: 10 }, { name: STRUCTURE_TERMINAL, quantity: 1 }, { name: STRUCTURE_FACTORY, quantity: 1 }, { name: STRUCTURE_OBSERVER, quantity: 1 }, { name: STRUCTURE_POWER_SPAWN, quantity: 1 }, { name: STRUCTURE_NUKER, quantity: 1 }] }
   ],
   run: function (room) {
+
+    if (room.name === 'E56S17') return;
     try {
       console.log(`[INFO] Running room planner for room ${room.name}`);
-      const vis = new RoomVisual(room.name);
+      //const vis = new RoomVisual(room.name);
 
       if (heap.rooms === undefined) heap.rooms = {};
       if (heap.rooms[room.name] === undefined) heap.rooms[room.name] = {};
@@ -29,11 +31,11 @@ const roomPlanner = {
       // If distanceMap is not set, set it
       if (roomData.distanceMap === undefined) {
         // distaneMap is undefined
-        console.log(`[INFO] Running distance transform for room ${room.name}`);
+        //console.log(`[INFO] Running distance transform for room ${room.name}`);
         roomData.distanceMap = distanceTransform(room.name);
       }
 
-      console.log(`[INFO] Running room planner for room ${room.name}, room data: ${JSON.stringify(roomData.distanceMap)}`);
+      //console.log(`[INFO] Running room planner for room ${room.name}, room data: ${JSON.stringify(roomData.distanceMap)}`);
       const min = 1;
       const max = 4;
 
@@ -44,19 +46,16 @@ const roomPlanner = {
           if (roomData[x][y] === undefined) roomData[x][y] = {};
           if (roomData[x][y].terrainType === undefined) roomData[x][y].terrainType = new Room.Terrain(room.name).get(x, y);
 
-          /**
+          let thisXY = roomData[x][y];
           if (thisXY.terrainType !== TERRAIN_MASK_WALL) {
-            let value = roomData.distanceMap.get(x, y);
-            let color = this.getHeatmapColor(value, min, max);
+            //let value = roomData.distanceMap.get(x, y);
+            //let color = this.getHeatmapColor(value, min, max);
 
-            //if (value > 1) vis.text(value, x, y);
-            // opacity 10%
-            vis.circle(x, y, {
-              radius: Math.max(value / 12),
-              fill: color,
-              opacity: 0.95
-            });
-          }*/
+            //vis.circle(x, y, {radius: Math.max(value / 12.5),fill: color, opacity: 0.5});
+
+            // add the distance value text
+            //vis.text(value, x, y, { color: 'white', stroke: 'black', font: 0.5 });
+          }
         }
       }
 
@@ -70,7 +69,8 @@ const roomPlanner = {
       if (roomData.controller === undefined) roomData.controller = room.controller;
 
       // Find optimal location for the core as the largest open area in the closest position to sources, minerals, and controller
-      if (roomData.core === undefined) roomData.core = this.findOptimalCoreLocation(room, roomData);
+      //if (roomData.core === undefined) roomData.core = this.findOptimalCoreLocation(room, roomData);
+      roomData.core = this.findOptimalCoreLocation(room, roomData);
 
       console.log(`[INFO] Optimal core location: ${JSON.stringify(roomData.core)}`);
       // Draw the letters from this.core in their locations based on roomData.core being the top left of the core stamp
@@ -79,7 +79,15 @@ const roomPlanner = {
         const creepsOnConstructionSites = room.find(FIND_MY_CREEPS).filter(creep => creep.pos.findInRange(FIND_CONSTRUCTION_SITES, 0).length);
         creepsOnConstructionSites.forEach(creep => creep.move(creep.pos.getDirectionTo(roomData.core.x, roomData.core.y)));
 
-        const coreStart = roomData.core;
+        const coreHeight = this.core.length;
+        const coreWidth = this.core[0].length;
+        const offsetX = Math.floor(coreWidth / 2);
+        const offsetY = Math.floor(coreHeight / 2);
+
+        // Adjust core position to center it
+        const coreStartX = roomData.core.x - offsetX;
+        const coreStartY = roomData.core.y - offsetY;
+
         let correctSpawnPosition = null;
 
         for (let y = 0; y < this.core.length; y++) {
@@ -87,73 +95,78 @@ const roomPlanner = {
             let letter = this.core[y][x];
             if (letter === ' ') continue;
 
-            const posX = coreStart.x + x;
-            const posY = coreStart.y + y;
+            const posX = coreStartX + x;
+            const posY = coreStartY + y;
             const expectedStructure = this.shortStructures[letter];
             if (!expectedStructure) continue;
 
-            // Draw visual
+            // 🎨 Draw visual
             new RoomVisual(room.name).text(letter, posX, posY, {
               color: 'white', font: 0.6, stroke: 'black', strokeWidth: 0.15
             });
 
-            // Look for existing structures
+            // 🚧 Check for existing structures
             const structuresAtPos = room.lookForAt(LOOK_STRUCTURES, posX, posY);
             const incorrectStructures = structuresAtPos.filter(s => s.structureType !== expectedStructure);
 
-            // If it's a spawn, store the correct position
+            // 📌 Store spawn position
             if (expectedStructure === STRUCTURE_SPAWN) {
               correctSpawnPosition = { x: posX, y: posY };
             }
 
-            // Handle incorrect structures
+            // ❌ Handle incorrect structures
             if (incorrectStructures.length) {
               incorrectStructures.forEach(s => {
-                console.log(`[WARNING] Structure mismatch at (${posX}, ${posY}) in ${room.name}. Expected: ${expectedStructure}, Found: ${s.structureType}`);
-                console.log(`[INFO] Removing ${s.structureType} from (${s.pos.x}, ${s.pos.y})`);
-                s.destroy();
+                if (s.pos.roomName !== 'E56S17') s.destroy();
               });
             }
 
-            // Ensure roads are placed correctly
+            // ✅ Ensure correct structures are placed
             if (expectedStructure === STRUCTURE_ROAD || expectedStructure === STRUCTURE_CONTAINER || expectedStructure === STRUCTURE_SPAWN) {
               const existingConstruction = room.lookForAt(LOOK_CONSTRUCTION_SITES, posX, posY);
               if (!structuresAtPos.length && !existingConstruction.length) {
-                console.log(`[INFO] Placing ${expectedStructure} at (${posX}, ${posY})`);
                 room.createConstructionSite(posX, posY, expectedStructure);
               }
             } else {
-              // If a level based structure is expected, check if one can be built. If so, place a construction site.
-
-              // get room level
+              // 🔍 Check if the structure can be built
               const roomLevel = room.controller.level;
+              const levelData = this.roomLevelMatrix.find(lvl => lvl.level === roomLevel);
 
-              // get the matching row from the roomLevelMatrix
-              const levelData = this.roomLevelMatrix.find(function (lvl) {
-                return lvl.level === roomLevel;
-              });
+              // 🛑 If no levelData exists, skip to the next structure
+              if (!levelData) {
+                console.log(`[WARNING] No room level data found for level ${roomLevel} in ${room.name}`);
+                continue;
+              }
 
-              // get the count for the expected structure and check if it is less than available for this room level
+              // Ensure structureData exists
+              const structureData = levelData.structures.find(s => s.name === expectedStructure);
+              if (!structureData) {
+                console.log(`[WARNING] No structure data found for ${expectedStructure} in room ${room.name}`);
+                continue;
+              }
+
+              // Get existing count of this structure in the room
               const existingCount = room.find(FIND_MY_STRUCTURES, {
                 filter: { structureType: expectedStructure }
               }).length;
 
-              if (existingCount < levelData.structures.find(s => s.name === expectedStructure).quantity) {
-                console.log(`[INFO] Placing ${expectedStructure} at (${posX}, ${posY})`);
-                room.createConstructionSite(posX, posY, expectedStructure);
+              // 🛑 Skip this structure if we already have enough
+              if (existingCount >= structureData.quantity) {
+                continue;
               }
 
+              // 🏗️ Place construction site for valid structures
+              room.createConstructionSite(posX, posY, expectedStructure);
             }
           }
         }
 
-        // Ensure the spawn exists at the correct position
+        // 🏢 Ensure the spawn exists at the correct position
         if (correctSpawnPosition) {
           const existingSpawns = room.find(FIND_MY_SPAWNS);
           const spawnAtCorrectPosition = existingSpawns.some(spawn => spawn.pos.x === correctSpawnPosition.x && spawn.pos.y === correctSpawnPosition.y);
 
           if (!spawnAtCorrectPosition) {
-            console.log(`[INFO] Spawning new spawn at (${correctSpawnPosition.x}, ${correctSpawnPosition.y})`);
             room.createConstructionSite(correctSpawnPosition.x, correctSpawnPosition.y, STRUCTURE_SPAWN);
           }
         }
@@ -171,16 +184,80 @@ const roomPlanner = {
             const constructionSites = room.lookForAt(LOOK_CONSTRUCTION_SITES, x, y);
             return !structures.some(s => s.structureType === STRUCTURE_ROAD) && !constructionSites.some(s => s.structureType === STRUCTURE_ROAD);
           });
+          let roadVis = new RoomVisual(room.name);
           // Draw road positions as letter r
           roadsToBuild.forEach(({ x, y }) => {
-            vis.text('r', x, y, { color: 'white', font: 0.6, stroke: 'black', strokeWidth: 0.15 });
+            roadVis.text('r', x, y, { color: 'white', font: 0.6, stroke: 'black', strokeWidth: 0.15 });
             // place construction sites
             room.createConstructionSite(x, y, STRUCTURE_ROAD);
           });
         }
+
+        // Ensure containers are placed near sources if a road exists but no container is present
+        roomData.sources.forEach(source => {
+          const sourcePos = source.pos;
+
+          // Find a road within 1 tile of the source
+          const nearbyRoad = sourcePos.findInRange(FIND_STRUCTURES, 1, { filter: { structureType: STRUCTURE_ROAD } })[0];
+
+          if (nearbyRoad) {
+            // Find if there's already a container near the source
+            const nearbyContainer = sourcePos.findInRange(FIND_STRUCTURES, 1, { filter: { structureType: STRUCTURE_CONTAINER } })[0];
+
+            //console.log(`[INFO] Source: ${sourcePos} Nearby road: ${nearbyRoad} Nearby container: ${nearbyContainer}`);
+
+            // If no container is found, place a container at the road location
+            if (!nearbyContainer) {
+              const constructionSite = sourcePos.findInRange(FIND_CONSTRUCTION_SITES, 1, { filter: { structureType: STRUCTURE_CONTAINER } })[0];
+
+              if (!constructionSite) {
+                //console.log(`[INFO] Placing container construction site at (${nearbyRoad.pos.x}, ${nearbyRoad.pos.y})`);
+                room.createConstructionSite(nearbyRoad.pos.x, nearbyRoad.pos.y, STRUCTURE_CONTAINER);
+              }
+            }
+          }
+        });
+
+        // Ensure a container is placed exactly 3 tiles from the controller ON a road
+        const controller = roomData.controller;
+        if (controller) {
+          const controllerPos = controller.pos;
+
+          // Find roads exactly 3 tiles away from the controller
+          const validRoads = controllerPos.findInRange(FIND_STRUCTURES, 3, {
+            filter: (s) => s.structureType === STRUCTURE_ROAD && controllerPos.getRangeTo(s.pos) === 3
+          });
+
+          if (validRoads.length > 0) {
+            let bestRoad = null;
+
+            for (const road of validRoads) {
+              // Check if a container already exists on this road tile
+              const hasContainer = road.pos.lookFor(LOOK_STRUCTURES).some(s => s.structureType === STRUCTURE_CONTAINER);
+
+              if (!hasContainer) {
+                bestRoad = road;
+                break; // Pick the first available road exactly 3 tiles away
+              }
+            }
+
+            if (bestRoad) {
+              const constructionSite = bestRoad.pos.lookFor(LOOK_CONSTRUCTION_SITES).some(s => s.structureType === STRUCTURE_CONTAINER);
+
+              if (!constructionSite) {
+                //console.log(`[INFO] Placing controller container at (${bestRoad.pos.x}, ${bestRoad.pos.y})`);
+                room.createConstructionSite(bestRoad.pos.x, bestRoad.pos.y, STRUCTURE_CONTAINER);
+              }
+            } else {
+              //console.log(`[INFO] No valid road exactly 3 tiles from the controller for a container.`);
+            }
+          } else {
+            //console.log(`[INFO] No road found exactly 3 tiles from the controller.`);
+          }
+        }
+
       }
 
-      
       heap.rooms[room.name] = roomData;
 
     } catch (e) {
@@ -192,87 +269,165 @@ const roomPlanner = {
     console.log(`[INFO] Finding optimal core location for room ${room.name}`);
     try {
       const controller = room.controller;
-      let bestScore = -Infinity;
-      let bestPosition = null;
-      const coreSize = { width: this.core[0].length, height: this.core.length };
+      const sources = roomData.sources;
+      const minerals = roomData.minerals;
 
-      // Cache proximity values
-      let sourceDistances = {};
-      let mineralDistances = {};
-      let controllerDistance = controller ? {} : null;
+      if (!controller || sources.length === 0 || minerals.length === 0) {
+        console.log(`[ERROR] Missing key locations (sources, minerals, or controller) in room ${room.name}`);
+        return null;
+      }
 
-      for (let y = 4; y < 46 - coreSize.height; y += 2) { // Ensure full core + buffer fits within bounds
-        for (let x = 4; x < 46 - coreSize.width; x += 2) {
-          // Ensure entire core area and buffer is buildable
-          let fits = true;
-          for (let dy = -1; dy <= coreSize.height; dy++) {
-            for (let dx = -1; dx <= coreSize.width; dx++) {
-              let checkX = x + dx;
-              let checkY = y + dy;
-              if (checkX < 0 || checkX >= 50 || checkY < 0 || checkY >= 50) continue;
-              if (dy >= 0 && dy < coreSize.height && dx >= 0 && dx < coreSize.width) {
-                if (this.core[dy][dx] !== ' ' && roomData[checkX][checkY].terrainType === TERRAIN_MASK_WALL) {
-                  fits = false;
-                  break;
-                }
-              } else {
-                if (roomData[checkX][checkY].terrainType === TERRAIN_MASK_WALL) {
-                  fits = false;
-                  break;
-                }
-              }
-            }
-            if (!fits) break;
-          }
-          if (!fits) continue;
+      // 🔵 Compute the center point
+      let totalX = controller.pos.x;
+      let totalY = controller.pos.y;
+      let count = 1;
 
-          let score = roomData.distanceMap.get(x, y);
-          let proximityScore = 0;
+      sources.forEach(source => {
+        totalX += source.pos.x;
+        totalY += source.pos.y;
+        count++;
+      });
 
-          for (const source of roomData.sources) {
-            const key = `${x},${y}-${source.id}`;
-            if (!sourceDistances[key]) {
-              sourceDistances[key] = source.pos.getRangeTo(x, y);
-            }
-            proximityScore += 1 / (sourceDistances[key] || 1);
-          }
+      minerals.forEach(mineral => {
+        totalX += mineral.pos.x;
+        totalY += mineral.pos.y;
+        count++;
+      });
 
-          for (const mineral of roomData.minerals) {
-            const key = `${x},${y}-${mineral.id}`;
-            if (!mineralDistances[key]) {
-              mineralDistances[key] = mineral.pos.getRangeTo(x, y);
-            }
-            proximityScore += 1 / (mineralDistances[key] || 1);
-          }
+      const centerX = Math.round(totalX / count);
+      const centerY = Math.round(totalY / count);
+      const centerPos = new RoomPosition(centerX, centerY, room.name);
 
-          if (controller) {
-            const key = `${x},${y}-controller`;
-            if (!controllerDistance[key]) {
-              controllerDistance[key] = controller.pos.getRangeTo(x, y);
-            }
-            proximityScore += 1 / (controllerDistance[key] || 1);
-          }
+      // 🎨 Draw the center point
+      const vis = new RoomVisual(room.name);
+      vis.circle(centerX, centerY, { fill: 'blue', radius: 0.4, stroke: 'white' });
 
-          score += proximityScore;
+      // 🔗 Draw blue lines to the center
+      [controller, ...sources, ...minerals].forEach(target => {
+        vis.line(target.pos, centerPos, { color: 'blue', width: 0.2, opacity: 0.7 });
+      });
 
-          if (score > bestScore) {
-            bestScore = score;
-            bestPosition = { x, y };
+      // 📌 Find valid DT tiles where the core can fit
+      const coreSize = Math.max(this.core.length, this.core[0].length);
+      let dtTiles = [];
+
+      for (let y = 3; y < 47; y++) {
+        for (let x = 3; x < 47; x++) {
+          let dtValue = roomData.distanceMap.get(x, y);
+          if (dtValue > (coreSize + 2) / 2) {
+            dtTiles.push({ x, y, value: dtValue });
+            vis.circle(x, y, { fill: 'yellow', radius: 0.3, stroke: 'black' });
           }
         }
       }
 
-      if (bestPosition) {
-        console.log(`[INFO] Optimal core location found at (${bestPosition.x}, ${bestPosition.y}) in room ${room.name}`);
-        this.corePosition = new RoomPosition(bestPosition.x, bestPosition.y, room.name);
-        return bestPosition; // Return the x, y coordinates of the core start position
+      console.log(`[INFO] Identified ${dtTiles.length} valid core positions in room ${room.name}`);
+
+      // ** Flood-Fill Clustering to Group DT Tiles **
+      let clusters = [];
+      let visited = new Set();
+
+      function floodFill(startTile) {
+        let cluster = [];
+        let stack = [startTile];
+
+        while (stack.length > 0) {
+          let tile = stack.pop();
+          let key = `${tile.x},${tile.y}`;
+
+          if (visited.has(key)) continue;
+          visited.add(key);
+          cluster.push(tile);
+
+          let neighbors = dtTiles.filter(t => Math.abs(t.x - tile.x) <= 1 && Math.abs(t.y - tile.y) <= 1);
+          stack.push(...neighbors);
+        }
+        return cluster;
       }
-      return null;
+
+      for (let tile of dtTiles) {
+        let key = `${tile.x},${tile.y}`;
+        if (!visited.has(key)) {
+          clusters.push(floodFill(tile));
+        }
+      }
+
+      console.log(`[INFO] Found ${clusters.length} clusters in room ${room.name}`);
+
+      // ** Select the top 3 largest clusters **
+      clusters.sort((a, b) => b.length - a.length);
+      const topClusters = clusters.slice(0, 3);
+      console.log(`[INFO] Keeping top ${topClusters.length} clusters for evaluation.`);
+
+      // ** Find the closest cluster to the center point **
+      let bestCluster = null;
+      let bestDistance = Infinity;
+
+      for (let cluster of topClusters) {
+        let clusterSize = cluster.length;
+        let clusterCenter = cluster.reduce((sum, tile) => ({
+          x: sum.x + tile.x, y: sum.y + tile.y
+        }), { x: 0, y: 0 });
+
+        clusterCenter.x = Math.round(clusterCenter.x / clusterSize);
+        clusterCenter.y = Math.round(clusterCenter.y / clusterSize);
+        let clusterCenterPos = new RoomPosition(clusterCenter.x, clusterCenter.y, room.name);
+
+        let distanceToCenter = clusterCenterPos.getRangeTo(centerPos);
+        if (distanceToCenter < bestDistance) {
+          bestDistance = distanceToCenter;
+          bestCluster = cluster;
+        }
+      }
+
+      if (!bestCluster) {
+        console.log(`[ERROR] No valid cluster found.`);
+        return centerPos;
+      }
+
+      // 🔍 **Now refine selection by minimizing total path cost**
+      let bestPathPoint = null;
+      let bestTotalSteps = Infinity;
+      let searchStack = [...bestCluster];
+
+      while (searchStack.length > 0) {
+        let currentTile = searchStack.pop();
+        let pos = new RoomPosition(currentTile.x, currentTile.y, room.name);
+        let totalSteps = 0;
+        let valid = true;
+
+        for (const target of [controller, ...sources, ...minerals]) {
+          const path = PathFinder.search(pos, { pos: target.pos, range: 1 }, {
+            maxOps: 2000,
+            swampCost: 2,
+            plainCost: 1
+          });
+
+          if (path.incomplete) {
+            valid = false;
+            break;
+          }
+          totalSteps += path.cost;
+        }
+
+        if (valid && totalSteps < bestTotalSteps) {
+          bestTotalSteps = totalSteps;
+          bestPathPoint = pos;
+        }
+      }
+
+      // 🎯 Final Selection
+      if (bestPathPoint) {
+        vis.circle(bestPathPoint.x, bestPathPoint.y, { fill: 'green', radius: 0.4, stroke: 'white' });
+        console.log(`[INFO] Optimal core location at (${bestPathPoint.x}, ${bestPathPoint.y}) with total steps: ${bestTotalSteps}`);
+        return bestPathPoint;
+      }
+
+      return centerPos;
     } catch (e) {
       console.log(`Error in roomPlanner.findOptimalCoreLocation(): ${e}`);
     }
   },
-
 
   /**
    * Flood fill to identify regions bounded by walls with openings ≤ 3 tiles.
@@ -361,19 +516,23 @@ const roomPlanner = {
       return roadPositions;
     }
 
-    // Get the core position from roomData
     const core = roomData.core;
-
-    // Get the storage position from the core stamp
     const coreStamp = this.core;
     let storageX = null;
     let storageY = null;
 
+    // Calculate offset to center stamp around core
+    const coreHeight = coreStamp.length;
+    const coreWidth = coreStamp[0].length;
+    const offsetX = Math.floor(coreWidth / 2);
+    const offsetY = Math.floor(coreHeight / 2);
+
+    // Find Storage 'S' position relative to stamp center
     for (let y = 0; y < coreStamp.length; y++) {
       for (let x = 0; x < coreStamp[y].length; x++) {
         if (coreStamp[y][x] === 'S') {
-          storageX = core.x + x;
-          storageY = core.y + y;
+          storageX = core.x - offsetX + x;
+          storageY = core.y - offsetY + y;
           break;
         }
       }
@@ -387,7 +546,6 @@ const roomPlanner = {
 
     const storagePos = new RoomPosition(storageX, storageY, room.name);
 
-    // Define pathfinding options
     const pathFinderOptions = {
       plainCost: 2,
       swampCost: 2,
@@ -397,17 +555,19 @@ const roomPlanner = {
       maxCost: 1000
     };
 
-    // Collect core positions to filter them out from road paths
+    // Collect core tiles to exclude from road placement
     const coreTiles = new Set();
     for (let y = 0; y < coreStamp.length; y++) {
       for (let x = 0; x < coreStamp[y].length; x++) {
         if (coreStamp[y][x] !== ' ') {
-          coreTiles.add(`${core.x + x},${core.y + y}`);
+          const posX = core.x - offsetX + x;
+          const posY = core.y - offsetY + y;
+          coreTiles.add(`${posX},${posY}`);
         }
       }
     }
 
-    // Collect road paths from storage to sources, minerals, and the controller
+    // Build roads from storage to all targets
     const targets = [...roomData.sources, ...roomData.minerals, roomData.controller].filter(Boolean);
 
     for (const target of targets) {
@@ -421,8 +581,9 @@ const roomPlanner = {
       }
     }
 
+    console.log(`[INFO] Planned ${roadPositions.length} road positions from storage in ${room.name}`);
     return roadPositions;
-  },
+},
   findOptimalExtensions: function (roomName) {
     const vis = new RoomVisual(roomName);
     const terrain = Game.map.getRoomTerrain(roomName);
@@ -569,12 +730,13 @@ const roomPlanner = {
     ' rr '
   ],
 
-  // The level 8 core gets the following structures: 3 spawns, 1 link, 1 storage, 1 terminal, 1 factory, 1 observer, 1 power spawn, 1 nuker
-  // link must be immediately adjacent to storage. All other structures must have a road at each cardinal direction
-  levelEightCore: [
-    ' rrrrr ',
-    'rsrsrsr'
-
+  extensions: [
+   '  r  ',
+   ' rer ',
+   'reeer',
+   'reeer',
+   ' rer ',
+   '  r  '
   ],
   shortStructures: {
     's': STRUCTURE_SPAWN,
