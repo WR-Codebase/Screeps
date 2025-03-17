@@ -30,8 +30,8 @@ module.exports = {
       repairer: roleRepairer,
       picker: rolePicker,
       minim: roleMinim,
-      drone: roleDrone,
-      remoteWorker: remoteWorker,
+      //drone: roleDrone,
+      //remoteWorker: remoteWorker,
       remoteHarvester: roleRemoteHarvester,
       remoteHauler: roleRemoteHauler,
       soldier: roleSoldier
@@ -46,6 +46,7 @@ module.exports = {
 
         this.roleMap[creep.memory.role].run(creep);
       }
+      //console.log(`[DEBUG] creepManager.run CPU Used: ${Game.cpu.getUsed().toFixed(2)}`);
     }
   }
 };

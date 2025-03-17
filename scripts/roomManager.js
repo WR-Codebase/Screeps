@@ -13,8 +13,23 @@ const roomManager = {
 
         // Once every ten ticks
         if (Game.time % 10 === 0) {
-          roomPlanner.run(room);
+          //roomPlanner.run(room);
         }
+
+        // group by roomName and role. We only want to capture quantity of each role in each roomname, not all data for each creep
+        const reducedCreeps = _.reduce(Game.creeps, (result, value, key) => {
+          
+          if (!result[value.memory.room]) {
+            result[value.memory.room] = {};
+          }
+          if (!result[value.memory.room][value.memory.role]) {
+            result[value.memory.room][value.memory.role] = 0;
+          }
+          result[value.memory.room][value.memory.role]++; 
+          return result;
+        }, {});
+        //console.log(`[DEBUG] reducedCreeps: ${JSON.stringify(reducedCreeps)}`);
+
 
         //if (Game.time % 10 === 0) roomPlanner.drawChecker(room);
         if (room.controller && room.controller.my) {
@@ -26,7 +41,8 @@ const roomManager = {
             const spawn = this.nextInactiveSpawn(room);
             if (spawn) {
               // A spawn is available, check if anything needs to be spawned and spawn it.
-              this.runSpawn(spawn, room);
+              // if reducedCreeps has roomName, spawn creeps for that room
+              this.runSpawn(spawn, room, (reducedCreeps.hasOwnProperty(roomName)) ? reducedCreeps[roomName] : {});
             }
 
             // Run link manager
@@ -44,6 +60,7 @@ const roomManager = {
     } catch (e) {
       console.log(`Error in roomManager.run(): ${e}`);
     }
+    console.log(`[DEBUG] roomManager.run CPU used: ${Game.cpu.getUsed().toFixed(2)}`);
   },
   // Find the next available spawn in the room or return null
   nextInactiveSpawn: function (room) {
@@ -56,10 +73,12 @@ const roomManager = {
     return null;
   },
   // Run the spawn logic for the room
-  runSpawn: function (spawn, room) {
-    const creepMemory = Memory.creeps;
+  runSpawn: function (spawn, room, reducedCreeps) {
+    //console.log(`[DEBUG] Running spawn logic for room ${room.name}, reducedCreeps: ${JSON.stringify(reducedCreeps)}`);
     // all filters must include room
-    const numHarvesters = _.filter(Game.creeps, (creep) => creep.memory.role === 'harvester' && creep.memory.room === room.name).length;
+
+
+    const numHarvesters = reducedCreeps['harvester'] || 0;
     const sources = room.find(FIND_SOURCES);
 
     const numSources = sources.length;
@@ -67,6 +86,7 @@ const roomManager = {
     if (numHarvesters < numSources) {
       // For each resource in the room, check if a harvester is assigned. If not, spawn one.
       for (const source of sources) {
+
 
         const harvesters = _.filter(Game.creeps, (creep) => creep.memory.role === 'harvester' && creep.memory.sourceId === source.id && creep.memory.room === room.name);
         //console.log(`[DEBUG] harvesters: ${harvesters} for source ${source.id}`);
@@ -85,12 +105,12 @@ const roomManager = {
     } else {
 
       // If there is an extension and there are no nurses, spawn a nurse to fill it
-      const nurses = _.filter(Game.creeps, (creep) => creep.memory.role === 'nurse' && creep.memory.room === room.name);
-      if (nurses.length < 1) {
+      const numNurses = reducedCreeps['nurse'] || 0;
+      if (numNurses < 1) {
         this.wrSpawnCreep(spawn, 'nurse', [CARRY, MOVE], [], {}, 16 * 50);
       } else {
 
-        let numHaulers = _.filter(Game.creeps, (creep) => creep.memory.role === 'hauler' && creep.memory.room === room.name).length;
+        let numHaulers = reducedCreeps['hauler'] || 0;
         if (numHaulers < numSources && room.find(FIND_STRUCTURES, { filter: { structureType: STRUCTURE_CONTAINER } }).length > 0) {
           // Similarly, if there are no haulers, spawn one, for each source.
           for (const source of sources) {
@@ -107,14 +127,13 @@ const roomManager = {
         }
 
         // If there are less than two workers, spawn one.
-        const workers = _.filter(Game.creeps, (creep) => creep.memory.role === 'worker' && creep.memory.room === room.name);
-        console.log(`[DEBUG] workers: ${workers.length}`);
-        if (workers.length < 2) {
+        const numWorkers = reducedCreeps['worker'] || 0;
+        if (numWorkers < 2) {
           this.wrSpawnCreep(spawn, 'worker', [WORK, CARRY, CARRY, CARRY, MOVE], [], {}, 1800); // total per pattern = 300
         } else {
 
           // If there are no repairers and any building is less than full health spawn a repairer for the room
-          const repairers = _.filter(Game.creeps, (creep) => creep.memory.role === 'repairer' && creep.memory.room === room.name);
+          const repairers = reducedCreeps['repairer'] || 0;
           const damagedBuildings = room.find(FIND_STRUCTURES, { filter: (structure) => structure.hits < structure.hitsMax });
           if (repairers.length < 1 && damagedBuildings.length > 0) {
             this.wrSpawnCreep(spawn, 'repairer', [WORK, CARRY, MOVE], [], {}, 8 * 50);
@@ -123,22 +142,22 @@ const roomManager = {
           //     minCreeps('picker', 2, [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE], 'HomeSpawn', roomName);
 
           // If there are no pickers and there are resources or tombstones on the ground, spawn a picker
-          const pickers = _.filter(Game.creeps, (creep) => creep.memory.role === 'picker' && creep.memory.room === room.name);
-          if (pickers.length < 1) {
+          const numPickers = reducedCreeps['picker'] || 0;
+          if (numPickers < 1) {
             this.wrSpawnCreep(spawn, 'picker', [CARRY, MOVE], [], {}, 16 * 50);
           }
 
           // If there is a link, spawn one minim to manage it
           const links = room.find(FIND_MY_STRUCTURES, { filter: { structureType: STRUCTURE_LINK } });
-          const minims = _.filter(Game.creeps, (creep) => creep.memory.role === 'minim' && creep.memory.room === room.name); 90
-          if (links.length > 0 && minims.length < 1) {
+          const minims = reducedCreeps['minim'] || 0;
+          if (links.length > 0 && minims < 1) {
             this.wrSpawnCreep(spawn, 'minim', [CARRY, MOVE], [], {}, 100);
           }
 
           // If there are no remote workers, spawn one
-          const remoteWorkers = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteWorker');
-          if (remoteWorkers.length < 3)
-          this.wrSpawnCreep(spawn, 'remoteWorker', [WORK, CARRY, MOVE], [], {}, 16 * 50);
+          //const remoteWorkers = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteWorker');
+          //if (remoteWorkers.length < 3)
+          //this.wrSpawnCreep(spawn, 'remoteWorker', [WORK, CARRY, MOVE], [], {}, 16 * 50);
 
           // If there are no remote harvesters, spawn one
           //const remoteHarvesters = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteHarvester');
@@ -162,14 +181,15 @@ const roomManager = {
           // Once every 10 ticks, check if adjacent rooms are claimable
           if (Game.time % 10 === 0) {
             // If there isn't already a claimer, make one.
-            const drones = _.filter(Game.creeps, (creep) => creep.memory.role === 'drone');
-            if (drones.length < 1)
-              this.wrSpawnCreep(spawn, 'drone', [CLAIM, CLAIM, MOVE], [], { targetRoom: 'E55S17' }, 9999);
+            //const drones = _.filter(Game.creeps, (creep) => creep.memory.role === 'drone');
+            //if (drones.length < 1)
+            //  this.wrSpawnCreep(spawn, 'drone', [CLAIM, CLAIM, MOVE], [], { targetRoom: 'E55S17' }, 9999);
 
           }
         }
       }
     }
+    console.log(`[DEBUG] runSpawn(${room.name}) CPU used: ${Game.cpu.getUsed().toFixed(2)}`);
   },
   bodyFactory: function (pattern, suffix, maxEnergy) {
     let body = [];
@@ -272,7 +292,7 @@ const roomManager = {
     }
 
     // Spawn the creep
-    console.log(`Spawning new ${role}: ${name} with body ${JSON.stringify(body)} and memory ${JSON.stringify(memoryObj)}`);
+    //console.log(`Spawning new ${role}: ${name} with body ${JSON.stringify(body)} and memory ${JSON.stringify(memoryObj)}`);
     // Spawning new hauler: hauler_W53S14_67383736 with body ["carry","move"] and memory {"name":"hauler_W53S14_67383736","role":"hauler","room":"W53S14","index":0,"sourceId":{"sourceId":"5bbcaa299099fc012e630f75"}}
 
     return spawn.spawnCreep(body, name, { memory: memoryObj });

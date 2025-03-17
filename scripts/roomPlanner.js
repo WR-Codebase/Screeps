@@ -251,6 +251,11 @@ const roomPlanner = {
             } else {
               //console.log(`[INFO] No valid road exactly 3 tiles from the controller for a container.`);
             }
+
+            // if RCL is >= 2 and current level's matrix includes more extensions, plan extensions
+            if (room.controller.level >= 2) {
+              //this.planExtensions(room, roomData);
+            }
           } else {
             //console.log(`[INFO] No road found exactly 3 tiles from the controller.`);
           }
@@ -583,6 +588,133 @@ const roomPlanner = {
 
     console.log(`[INFO] Planned ${roadPositions.length} road positions from storage in ${room.name}`);
     return roadPositions;
+},
+planExtensions: function (room, roomData) {
+  const vis = new RoomVisual(room.name);
+  const maxExtensions = CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][room.controller.level];
+  const existingExtensions = room.find(FIND_MY_STRUCTURES, { filter: { structureType: STRUCTURE_EXTENSION } }).length;
+  const neededExtensions = maxExtensions - existingExtensions;
+
+  if (neededExtensions <= 0) {
+      console.log(`[INFO] All ${maxExtensions} extensions built in ${room.name}`);
+      return;
+  }
+
+  console.log(`[INFO] Planning ${neededExtensions} extensions for ${room.name}`);
+
+  const stamp = this.extensionStamp;
+  const stampHeight = stamp.length;
+  const stampWidth = stamp[0].length;
+  const halfWidth = Math.floor(stampWidth / 2);
+  const halfHeight = Math.floor(stampHeight / 2);
+
+  // 🏠 Find the first spawn
+  const spawns = room.find(FIND_MY_SPAWNS);
+  if (!spawns.length) {
+      console.log(`[ERROR] No spawn found in ${room.name}. Cannot place extensions.`);
+      return;
+  }
+  const firstSpawn = spawns[0];
+  const spawnX = firstSpawn.pos.x;
+  const spawnY = firstSpawn.pos.y;
+
+  // 📍 Determine Direction Away from Sources
+  let avgSourceX = 0, avgSourceY = 0;
+  roomData.sources.forEach(source => {
+      avgSourceX += source.pos.x;
+      avgSourceY += source.pos.y;
+  });
+
+  avgSourceX /= roomData.sources.length;
+  avgSourceY /= roomData.sources.length;
+
+  // 📏 Vector from spawn to sources
+  const directionX = Math.sign(avgSourceX - spawnX); // -1 = Left, +1 = Right
+  const directionY = Math.sign(avgSourceY - spawnY); // -1 = Up, +1 = Down
+
+  // 🐝 **Start extension placement away from sources**
+  let startX = spawnX - directionX * 6;
+  let startY = spawnY - directionY * 6;
+  const placed = [];
+
+  let attempts = 0;
+  const maxAttempts = 100;
+
+  // 🔶 **Hexagonal Tiling**
+  while (placed.length < neededExtensions && attempts < maxAttempts) {
+      const tileX = startX + (attempts % 5) * 3; // Staggered X placement
+      const tileY = startY + Math.floor(attempts / 5) * 2; // Every row moves 2 tiles down
+
+      if (attempts % 2 === 0) startX += 1; // Offset every second row
+
+      let canPlace = true;
+
+      // Check terrain & avoid overlap with core
+      outer: for (let y = 0; y < stampHeight; y++) {
+          for (let x = 0; x < stampWidth; x++) {
+              const tile = stamp[y][x];
+              const absX = tileX + x - halfWidth;
+              const absY = tileY + y - halfHeight;
+
+              if (absX < 1 || absX > 48 || absY < 1 || absY > 48) {
+                  canPlace = false;
+                  break outer;
+              }
+
+              const terrain = new Room.Terrain(room.name).get(absX, absY);
+              if (terrain === TERRAIN_MASK_WALL) {
+                  canPlace = false;
+                  break outer;
+              }
+
+              const structures = room.lookForAt(LOOK_STRUCTURES, absX, absY);
+              if (structures.some(s => s.structureType === STRUCTURE_EXTENSION)) {
+                  canPlace = false;
+                  break outer;
+              }
+          }
+      }
+
+      // ✅ Place hex stamp if valid
+      if (canPlace) {
+          for (let y = 0; y < stampHeight; y++) {
+              for (let x = 0; x < stampWidth; x++) {
+                  const letter = stamp[y][x];
+                  if (letter === ' ') continue;
+
+                  const absX = tileX + x - halfWidth;
+                  const absY = tileY + y - halfHeight;
+                  const structureType = this.shortStructures[letter];
+
+                  // Draw visual
+                  vis.text(letter, absX, absY, { color: 'yellow', font: 0.5 });
+
+                  const existing = room.lookForAt(LOOK_STRUCTURES, absX, absY);
+                  const site = room.lookForAt(LOOK_CONSTRUCTION_SITES, absX, absY);
+                  if (!existing.length && !site.length) {
+                      //room.createConstructionSite(absX, absY, structureType);
+                  }
+
+                  if (structureType === STRUCTURE_EXTENSION) {
+                      placed.push({ x: absX, y: absY });
+                      if (placed.length >= neededExtensions) break;
+                  }
+              }
+              if (placed.length >= neededExtensions) break;
+          }
+      }
+
+      // Move outward in staggered hex pattern
+      if (attempts % 2 === 0) {
+          startX -= 2;
+      } else {
+          startX += 2;
+          startY += 2;
+      }
+      attempts++;
+  }
+
+  console.log(`[INFO] Placed ${placed.length} extensions in ${room.name}`);
 },
   findOptimalExtensions: function (roomName) {
     const vis = new RoomVisual(roomName);
