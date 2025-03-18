@@ -16,7 +16,7 @@ const roomPlanner = {
   ],
   run: function (room) {
 
-    if (room.name === 'E56S17') return;
+    if (room.name !== 'E55S17') return;
     try {
       console.log(`[INFO] Running room planner for room ${room.name}`);
       //const vis = new RoomVisual(room.name);

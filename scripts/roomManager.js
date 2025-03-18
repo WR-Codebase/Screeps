@@ -4,17 +4,18 @@ const distanceTransform = require("./distanceTransform");
 
 const roomManager = {
   run: function () {
+    console.log(`[DEBUG] roomManager.run CPU used at start: ${Game.cpu.getUsed().toFixed(2)}`);
     // Create a global copy of Memory.creeps so we're not constantly reading from memory
     try {
+        // Once every ten ticks
+        if (Game.time % 10 === 0) {
+          //roomPlanner.run(Game.rooms['E55S17']);
+        }
       //console.log('Checking rooms for spawns');
       for (const roomName in Game.rooms) {
         //console.log(`Checking room ${roomName}`);
         const room = Game.rooms[roomName];
 
-        // Once every ten ticks
-        if (Game.time % 10 === 0) {
-          //roomPlanner.run(room);
-        }
 
         // group by roomName and role. We only want to capture quantity of each role in each roomname, not all data for each creep
         const reducedCreeps = _.reduce(Game.creeps, (result, value, key) => {
@@ -30,7 +31,8 @@ const roomManager = {
         }, {});
         //console.log(`[DEBUG] reducedCreeps: ${JSON.stringify(reducedCreeps)}`);
 
-
+        // get CPU used
+        console.log(`[DEBUG] roomManager.run CPU used after reducedCreeps: ${Game.cpu.getUsed().toFixed(2)}`);
         //if (Game.time % 10 === 0) roomPlanner.drawChecker(room);
         if (room.controller && room.controller.my) {
           // Check for spawns
@@ -132,10 +134,10 @@ const roomManager = {
           this.wrSpawnCreep(spawn, 'worker', [WORK, CARRY, CARRY, CARRY, MOVE], [], {}, 1800); // total per pattern = 300
         } else {
 
-          // If there are no repairers and any building is less than full health spawn a repairer for the room
-          const repairers = reducedCreeps['repairer'] || 0;
-          const damagedBuildings = room.find(FIND_STRUCTURES, { filter: (structure) => structure.hits < structure.hitsMax });
-          if (repairers.length < 1 && damagedBuildings.length > 0) {
+          // If there are no repairers and there are no towers spawn a repairer for the room
+          const numRepairers = reducedCreeps['repairer'] || 0;
+          const numTowers = room.find(FIND_MY_STRUCTURES, { filter: { structureType: STRUCTURE_TOWER } }).length;
+          if (numRepairers < 1 && numTowers < 1) {
             this.wrSpawnCreep(spawn, 'repairer', [WORK, CARRY, MOVE], [], {}, 8 * 50);
           }
 
@@ -156,8 +158,9 @@ const roomManager = {
 
           // If there are no remote workers, spawn one
           //const remoteWorkers = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteWorker');
+          //console.log(`[DEBUG] remoteWorkers: ${remoteWorkers.length}`);
           //if (remoteWorkers.length < 3)
-          //this.wrSpawnCreep(spawn, 'remoteWorker', [WORK, CARRY, MOVE], [], {}, 16 * 50);
+            //this.wrSpawnCreep(spawn, 'remoteWorker', [WORK, CARRY, MOVE], [], {}, 16 * 50);
 
           // If there are no remote harvesters, spawn one
           //const remoteHarvesters = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteHarvester');
@@ -179,13 +182,12 @@ const roomManager = {
           //  );
 
           // Once every 10 ticks, check if adjacent rooms are claimable
-          if (Game.time % 10 === 0) {
+          //if (Game.time % 10 === 0) {
             // If there isn't already a claimer, make one.
             //const drones = _.filter(Game.creeps, (creep) => creep.memory.role === 'drone');
             //if (drones.length < 1)
-            //  this.wrSpawnCreep(spawn, 'drone', [CLAIM, CLAIM, MOVE], [], { targetRoom: 'E55S17' }, 9999);
-
-          }
+              //this.wrSpawnCreep(spawn, 'drone', [CLAIM, CLAIM, MOVE], [], { targetRoom: 'E55S17' }, 9999);
+          //}
         }
       }
     }

@@ -30,8 +30,8 @@ module.exports = {
       repairer: roleRepairer,
       picker: rolePicker,
       minim: roleMinim,
-      //drone: roleDrone,
-      //remoteWorker: remoteWorker,
+      drone: roleDrone,
+      remoteWorker: remoteWorker,
       remoteHarvester: roleRemoteHarvester,
       remoteHauler: roleRemoteHauler,
       soldier: roleSoldier

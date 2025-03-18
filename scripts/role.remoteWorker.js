@@ -2,8 +2,14 @@ const roleRemoteWorker = {
   run: function(creep) {
     try {
       creep.memory.energyPriority = ['STORAGE','TOMBSTONE','RUIN','CONTAINER_STORAGE', 'DROPPED_RESOURCE', 'SOURCE'];
-      const travelRoute = ['E56S17', 'E55S17', 'E55S18'];
 
+      const targetRoom = creep.memory.targetRoom;
+      if (!targetRoom) {
+          console.log(`[ERROR] Remote Worker ${creep.name} is missing targetRoom in memory!`);
+          creep.memory.targetRoom = 'E55S17';
+          return;
+      }
+    
       if (!creep.memory.status) {
           creep.memory.status = '🔄collect';
       }
@@ -17,9 +23,9 @@ const roleRemoteWorker = {
       }
 
       if (creep.memory.status === '🔄collect') {
-        this.collectEnergy(creep, travelRoute);
+        this.collectEnergy(creep, [targetRoom]);
       } else {
-        this.buildAlongRoute(creep, travelRoute);
+        this.buildAlongRoute(creep, [targetRoom]);
       }
 
       if (creep.memory.previousStatus !== creep.memory.status) {
@@ -33,17 +39,27 @@ const roleRemoteWorker = {
   },
 
   buildAlongRoute: function(creep, route) {
-      if (creep.room.find(FIND_CONSTRUCTION_SITES).length > 0) {
-          let constructionSite = creep.pos.findClosestByPath(FIND_CONSTRUCTION_SITES);
-          if (constructionSite) {
-              if (creep.build(constructionSite) === ERR_NOT_IN_RANGE) {
-                  creep.moveTo(constructionSite, { visualizePathStyle: { stroke: '#ffffff' } });
-              }
-              creep.memory.status = '🚧building';
-              return;
-          }
-      }
-      this.moveThroughRooms(creep, route);
+    // if creep is not in target room, move to target room
+    if (creep.room.name !== route[0]) {
+        creep.moveTo(new RoomPosition(25, 25, route[0]), { visualizePathStyle: { stroke: '#ffffff' } });
+        return;
+    } else {
+        // if creep is in target room
+        let constructionSite = creep.pos.findClosestByPath(FIND_CONSTRUCTION_SITES);
+        if (constructionSite) {
+            if (creep.build(constructionSite) === ERR_NOT_IN_RANGE) {
+                creep.moveTo(constructionSite, { visualizePathStyle: { stroke: '#ffffff' } });
+            }
+            creep.memory.status = '🚧building';
+        } else {
+            // if no construction sites, go to controller
+            if (creep.upgradeController(creep.room.controller) === ERR_NOT_IN_RANGE) {
+                creep.moveTo(creep.room.controller, { visualizePathStyle: { stroke: '#ffffff' } });
+            }
+            creep.memory.status = '⚡upgrade';
+        }
+    }
+ 
   },
 
   collectEnergy: function(creep, route) {
@@ -118,16 +134,6 @@ const roleRemoteWorker = {
           !source.room.lookForAt(LOOK_STRUCTURES, pos.x, pos.y).length 
       );
   },
-
-  moveThroughRooms: function(creep, route) {
-      let currentIndex = route.indexOf(creep.room.name);
-      if (currentIndex !== -1 && currentIndex < route.length - 1) {
-          let nextRoom = route[currentIndex + 1];
-          let exit = creep.room.findExitTo(nextRoom);
-          let exitPos = creep.pos.findClosestByPath(exit);
-          if (exitPos) creep.moveTo(exitPos, { visualizePathStyle: { stroke: '#00ff00' } });
-      }
-  }
 };
 
 module.exports = roleRemoteWorker;
