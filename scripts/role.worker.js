@@ -41,7 +41,7 @@ const roleWorker = {
 
       if (target) {
         if (creep.withdraw(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-          creep.moveTo(target, { visualizePathStyle: { stroke: '#ffaa00' } });
+          creep.travelTo(target, { visualizePathStyle: { stroke: '#ffaa00' }, ignoreCreeps: true, stuckValue: 2 });
         }
       } else {
         target = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, {
@@ -49,13 +49,13 @@ const roleWorker = {
         });
         if (target) {
           if (creep.pickup(target) === ERR_NOT_IN_RANGE) {
-            creep.moveTo(target, { visualizePathStyle: { stroke: '#ffaa00' } });
+            creep.travelTo(target, { visualizePathStyle: { stroke: '#ffaa00' }, ignoreCreeps: true, stuckValue: 2 });
           }
         } else {
           target = creep.pos.findClosestByPath(FIND_SOURCES_ACTIVE);
           if (target) {
             if (creep.harvest(target) === ERR_NOT_IN_RANGE) {
-              creep.moveTo(target, { visualizePathStyle: { stroke: '#ffaa00' } });
+              creep.travelTo(target, { visualizePathStyle: { stroke: '#ffaa00' }, ignoreCreeps: true, stuckValue: 2 });
             }
           }
         }

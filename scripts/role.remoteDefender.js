@@ -6,7 +6,7 @@ const roleRemoteDefender = {
   run: function (creep) {
     //console.log(`Running remoteDefender ${creep.name}`);
     // Target room to defend
-    creep.memory.targetRoom = 'E53N17';
+    creep.memory.targetRoom = 'E55S17';
     const targetRoom = creep.memory.targetRoom;
 
     // If not in the target room, move to it

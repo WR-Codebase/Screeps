@@ -22,9 +22,10 @@ module.exports = {
           // Check if energy is over 500 and if so, find the most damaged structure and repair
           // If no hostiles and energy is over 50%, find the most damaged structure and repair except for roads filter by structure.hits <= 200000
           // && structure hits is less than 80% of hitsMax
+          // and structure has less than 150,000 hits
           const targets = tower.room.find(FIND_STRUCTURES, {
-            filter: (structure) => structure.hits < structure.hitsMax * 0.8
-            && structure.structureType !== STRUCTURE_WALL
+            filter: (structure) => structure.hits < structure.hitsMax * 0.9
+            && structure.hits < 30000
           });
           // && structure.structureType !== STRUCTURE_ROAD
           

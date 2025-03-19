@@ -23,12 +23,12 @@ const roleMinim = {
       if (targetLink.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
         if (creep.withdraw(targetLink, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
           //console.log(`Creep ${creep.name} is moving to link to collect energy`);
-          creep.moveTo(targetLink, {visualizePathStyle: {stroke: '#ffaa00'}});
+          creep.travelTo(targetLink, {visualizePathStyle: {stroke: '#ffaa00'}});
         } else {
           // If the creep has energy, deposit it into storage
           //console.log(`Creep ${creep.name} is depositing energy into storage ${storage.id}`);
           if (creep.transfer(storage, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-            creep.moveTo(storage, {visualizePathStyle: {stroke: '#ffffff'}});
+            creep.travelTo(storage, {visualizePathStyle: {stroke: '#ffffff'}});
             return;
           }
         }
@@ -36,7 +36,7 @@ const roleMinim = {
         // deliver energy to storage
         if (creep.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
           if (creep.transfer(storage, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-            creep.moveTo(storage, {visualizePathStyle: {stroke: '#ffffff'}});
+            creep.travelTo(storage, {visualizePathStyle: {stroke: '#ffffff'}});
           }
         }
       }
@@ -44,7 +44,7 @@ const roleMinim = {
       // Deliver energy to storage
       if (creep.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
         if (creep.transfer(storage, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-          creep.moveTo(storage, { visualizePathStyle: { stroke: '#ffffff' } });
+          creep.travelTo(storage, { visualizePathStyle: { stroke: '#ffffff' } });
         }
       }
     }

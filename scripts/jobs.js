@@ -13,7 +13,7 @@ const jobs = {
       if (creep.store[RESOURCE_ENERGY] >= 50) {
         const target = creep.pos.findClosestByPath(towers);
         if (creep.transfer(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-          creep.travelTo(target, { visualizePathStyle: { stroke: '#0af' }, ignoreCreeps: false });
+          creep.travelTo(target, { visualizePathStyle: { stroke: '#0af' }, ignoreCreeps: true, stuckValue: 2 });
         }
       } else {
         // If the creep has less than 50 energy, collect more
@@ -51,7 +51,7 @@ const jobs = {
       }
       //console.log(`${creep.name} attempting to transfer to ${target.structureType} at ${target.pos}, Energy: ${creep.store.getUsedCapacity(RESOURCE_ENERGY)}`);
       if (creep.transfer(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(target, { visualizePathStyle: { stroke: '#f96' }, ignoreCreeps: false });
+        creep.travelTo(target, { visualizePathStyle: { stroke: '#f96' }, ignoreCreeps: true, stuckValue: 2 });
       } else if (creep.transfer(target, RESOURCE_ENERGY) === OK) {
         //console.log(`${creep.name} transferred energy to ${target.structureType}`);
       } else {
@@ -87,7 +87,7 @@ const jobs = {
     if (creep.memory.targetId) {
       const target = Game.getObjectById(creep.memory.targetId);
       if (creep.transfer(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(target, { visualizePathStyle: { stroke: '#f96' }, ignoreCreeps: false });
+        creep.travelTo(target, { visualizePathStyle: { stroke: '#f96' }, ignoreCreeps: true, stuckValue: 2 });
       }
     }
   },
@@ -116,7 +116,8 @@ const jobs = {
       if (creep.repair(targetToRepair) === ERR_NOT_IN_RANGE) {
         creep.travelTo(targetToRepair, {
           visualizePathStyle: { stroke: '#fa0' },
-          ignoreCreeps: false,
+          ignoreCreeps: true,
+          stuckValue: 2,
           reusePath: 20,  // Caches path for 20 ticks
           maxOps: 100      // Limits CPU spent on pathfinding
         });
@@ -138,7 +139,7 @@ const jobs = {
     }
     if (target) {
       if (creep.build(target) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(target, { visualizePathStyle: { stroke: '#fa0' }, ignoreCreeps: false });
+        creep.travelTo(target, { visualizePathStyle: { stroke: '#fa0' }, ignoreCreeps: true, stuckValue: 2 });
       }
     } else {
       creep.memory.status = 'idle';
@@ -274,7 +275,7 @@ const jobs = {
 
     // Attempt to interact with the target based on its type
     if (target instanceof Resource && creep.pickup(target) === ERR_NOT_IN_RANGE) {
-      creep.travelTo(target, { visualizePathStyle: { stroke: '#0fa' }, ignoreCreeps: false });
+      creep.travelTo(target, { visualizePathStyle: { stroke: '#0fa' }, ignoreCreeps: true, stuckValue: 2 });
     } else if ((target instanceof Tombstone
       || target instanceof Ruin
       || target instanceof StructureContainer
@@ -283,10 +284,10 @@ const jobs = {
       && creep.withdraw(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
       //console.log(`${creep.name} found ${target}, moving to it now`);
 
-      creep.travelTo(target, { visualizePathStyle: { stroke: '#0fa' }, ignoreCreeps: false });
+      creep.travelTo(target, { visualizePathStyle: { stroke: '#0fa' }, ignoreCreeps: true, stuckValue: 2 });
     } else if (target instanceof Source
       && creep.harvest(target) === ERR_NOT_IN_RANGE) {
-      creep.travelTo(target, { visualizePathStyle: { stroke: '#0fa' }, ignoreCreeps: false });
+      creep.travelTo(target, { visualizePathStyle: { stroke: '#0fa' }, ignoreCreeps: true, stuckValue: 2 });
     }
   },
 
@@ -302,21 +303,14 @@ const jobs = {
     }
 
     if (creep.memory.upgrading) {
+              // if room sign is not "🤖 Beep boop! 🤖" set it
       if (creep.upgradeController(creep.room.controller) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(creep.room.controller, { visualizePathStyle: { stroke: '#fa0' }, ignoreCreeps: false, repath: 0.5 });
-      } else {
-        // if room sign is not "🤖 Beep boop! 🤖" set it
-        if (!creep.room.controller.sign || creep.room.controller.sign.text !== "🤖 Beep boop! 🤖") {
-          if (creep.signController(creep.room.controller, "🤖 Beep boop! 🤖 ~ [B.N.A.]" ) == ERR_NOT_IN_RANGE)
-            creep.travelTo(creep.room.controller, { visualizePathStyle: { stroke: '#fa0' }, ignoreCreeps: false });
-        }
+        creep.travelTo(creep.room.controller, { visualizePathStyle: { stroke: '#fa0' }, ignoreCreeps: true, stuckValue: 2 });
       }
     } else {
       this.collect(creep);
     }
   }
-
-  // Rest of the jobs.js functions
 };
 
 module.exports = jobs;

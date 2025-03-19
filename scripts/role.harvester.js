@@ -71,10 +71,12 @@ const roleHarvester = {
       filter: (structure) => structure.structureType === STRUCTURE_LINK
     })[0];
 
-    // if used capacity is greater than 0, attempt to transfer energy to a link
-    if (link && creep.store.getUsedCapacity() > 0) {
+    // if used capacity is greater than 0, attempt to transfer energy to a link and the link has free space
+    if (link && creep.store.getUsedCapacity() > 0 && link.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
       // Attempt to transfer energy to the link
-      const transferResult = creep.transfer(link, RESOURCE_ENERGY);
+      // amount to transfer is link max minus link used
+      const amountToTransfer = link.store.getFreeCapacity(RESOURCE_ENERGY);
+      const transferResult = creep.transfer(link, RESOURCE_ENERGY, amountToTransfer);
       if (transferResult === OK) {
         //console.log(`Harvester ${creep.name} transferred energy to link at ${link.pos}`);
       } else if (transferResult === ERR_NOT_IN_RANGE) {

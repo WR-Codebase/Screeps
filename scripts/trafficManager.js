@@ -2,6 +2,8 @@
  * Screeps Traffic Manager
  *
  * Manages creep movement to reduce congestion and improve pathing efficiency.
+ *
+ * With this version, you don't need to registerMove() on your own. Just call trafficManager.run() for every room at the end of the loop.
  */
 
 const DIRECTION_DELTA = {
@@ -13,6 +15,14 @@ const DIRECTION_DELTA = {
   [BOTTOM_LEFT]: { x: -1, y: 1 },
   [LEFT]: { x: -1, y: 0 },
   [TOP_LEFT]: { x: -1, y: -1 },
+}
+
+if (!Creep.prototype._move) {
+  Creep.prototype._move = Creep.prototype.move
+
+  Creep.prototype.move = function (direciton) {
+    registerMove(this, direciton)
+  }
 }
 
 /**
@@ -163,7 +173,7 @@ function resolveMovement(creep) {
   const matchedPos = unpackCoordinates(getMatchedPackedCoord(creep))
 
   if (!creep.pos.isEqualTo(matchedPos.x, matchedPos.y)) {
-    creep.move(creep.pos.getDirectionTo(matchedPos.x, matchedPos.y))
+    creep._move(creep.pos.getDirectionTo(matchedPos.x, matchedPos.y))
   }
 }
 
@@ -364,8 +374,6 @@ function unpackCoordinates(packedCoord) {
 }
 
 const trafficManager = {
-  registerMove,
-  setWorkingArea,
   run,
 }
 

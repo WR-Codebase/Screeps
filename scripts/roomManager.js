@@ -117,9 +117,6 @@ const roomManager = {
           // Similarly, if there are no haulers, spawn one, for each source.
           for (const source of sources) {
 
-            // if this soure has a link within three tiles, don't spawn a hauler
-            const link = source.pos.findInRange(FIND_MY_STRUCTURES, 3, { filter: { structureType: STRUCTURE_LINK } })[0];
-            if (link) continue;
             const haulers = _.filter(Game.creeps, (creep) => creep.memory.role === 'hauler' && creep.memory.sourceId === source.id);
             // If haulers < 1 and there are containers in the room
             if (haulers.length < 1) {
@@ -153,7 +150,14 @@ const roomManager = {
           const links = room.find(FIND_MY_STRUCTURES, { filter: { structureType: STRUCTURE_LINK } });
           const minims = reducedCreeps['minim'] || 0;
           if (links.length > 0 && minims < 1) {
-            this.wrSpawnCreep(spawn, 'minim', [CARRY, MOVE], [], {}, 100);
+            this.wrSpawnCreep(spawn, 'minim', [CARRY], [MOVE], {}, 300);
+          }
+
+          // If there is a mineral extractor and there are no mineral harvesters spawn one.
+          const extractors = room.find(FIND_MY_STRUCTURES, { filter: { structureType: STRUCTURE_EXTRACTOR } });
+          const numMineralHarvesters = reducedCreeps['mineralHarvester'] || 0;
+          if (extractors.length > 0 && numMineralHarvesters < 1) {
+            this.wrSpawnCreep(spawn, 'mineralHarvester', [WORK, CARRY, CARRY, MOVE], [], {}, 16 * 50);
           }
 
           // If there are no remote workers, spawn one
@@ -161,6 +165,11 @@ const roomManager = {
           //console.log(`[DEBUG] remoteWorkers: ${remoteWorkers.length}`);
           //if (remoteWorkers.length < 3)
             //this.wrSpawnCreep(spawn, 'remoteWorker', [WORK, CARRY, MOVE], [], {}, 16 * 50);
+
+          // Remote Defender
+          const remoteDefenders = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteDefender');
+          if (remoteDefenders.length < 1)
+            this.wrSpawnCreep(spawn, 'remoteDefender', [TOUGH, RANGED_ATTACK, MOVE], [], {}, 9999);
 
           // If there are no remote harvesters, spawn one
           //const remoteHarvesters = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteHarvester');

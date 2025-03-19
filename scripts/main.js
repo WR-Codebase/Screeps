@@ -1,6 +1,7 @@
 const roomManager = require('roomManager');
 const creepManager = require('creepManager');
 const towerManager = require('towerManager');
+const trafficManager = require('trafficManager');
 
 if (!global.allies)
   global.allies = new Set(["kotyara", "suyu", "dodzai", "Pwk", "WoodenRobot", "Belthazor"]);
@@ -34,9 +35,13 @@ module.exports.loop = function () {
       }
       purgeMemory();
     }
-  } catch (e) {
+    _.forEach(Game.rooms, room => {
+      trafficManager.run(room);
+    });
+    } catch (e) {
     console.log(`Error in main loop: ${e}`);
   };
+
 }
 
 /**
