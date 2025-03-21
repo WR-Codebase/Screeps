@@ -4,13 +4,13 @@ const distanceTransform = require("./distanceTransform");
 
 const roomManager = {
   run: function () {
-    console.log(`[DEBUG] roomManager.run CPU used at start: ${Game.cpu.getUsed().toFixed(2)}`);
+    //console.log(`[DEBUG] roomManager.run CPU used at start: ${Game.cpu.getUsed().toFixed(2)}`);
     // Create a global copy of Memory.creeps so we're not constantly reading from memory
     try {
-        // Once every ten ticks
-        if (Game.time % 10 === 0) {
-          //roomPlanner.run(Game.rooms['E55S17']);
-        }
+      // Once every ten ticks
+      if (Game.time % 10 === 0) {
+        //roomPlanner.run(Game.rooms['E55S17']);
+      }
       //console.log('Checking rooms for spawns');
       for (const roomName in Game.rooms) {
         //console.log(`Checking room ${roomName}`);
@@ -19,20 +19,20 @@ const roomManager = {
 
         // group by roomName and role. We only want to capture quantity of each role in each roomname, not all data for each creep
         const reducedCreeps = _.reduce(Game.creeps, (result, value, key) => {
-          
+
           if (!result[value.memory.room]) {
             result[value.memory.room] = {};
           }
           if (!result[value.memory.room][value.memory.role]) {
             result[value.memory.room][value.memory.role] = 0;
           }
-          result[value.memory.room][value.memory.role]++; 
+          result[value.memory.room][value.memory.role]++;
           return result;
         }, {});
         //console.log(`[DEBUG] reducedCreeps: ${JSON.stringify(reducedCreeps)}`);
 
         // get CPU used
-        console.log(`[DEBUG] roomManager.run CPU used after reducedCreeps: ${Game.cpu.getUsed().toFixed(2)}`);
+        //console.log(`[DEBUG] roomManager.run CPU used after reducedCreeps: ${Game.cpu.getUsed().toFixed(2)}`);
         //if (Game.time % 10 === 0) roomPlanner.drawChecker(room);
         if (room.controller && room.controller.my) {
           // Check for spawns
@@ -62,7 +62,7 @@ const roomManager = {
     } catch (e) {
       console.log(`Error in roomManager.run(): ${e}`);
     }
-    console.log(`[DEBUG] roomManager.run CPU used: ${Game.cpu.getUsed().toFixed(2)}`);
+    //console.log(`[DEBUG] roomManager.run CPU used: ${Game.cpu.getUsed().toFixed(2)}`);
   },
   // Find the next available spawn in the room or return null
   nextInactiveSpawn: function (room) {
@@ -108,7 +108,11 @@ const roomManager = {
 
       // If there is an extension and there are no nurses, spawn a nurse to fill it
       const numNurses = reducedCreeps['nurse'] || 0;
-      if (numNurses < 1) {
+
+      // number of nurses should be proportional to every 1 nurse to 10 extensions
+      const extensions = room.find(FIND_MY_STRUCTURES, { filter: { structureType: STRUCTURE_EXTENSION } }) || 1;
+      const targetNurses = Math.max(1, Math.floor(extensions.length / 15));
+      if (extensions.length > 0 && numNurses < targetNurses) {
         this.wrSpawnCreep(spawn, 'nurse', [CARRY, MOVE], [], {}, 16 * 50);
       } else {
 
@@ -127,7 +131,7 @@ const roomManager = {
 
         // If there are less than two workers, spawn one.
         const numWorkers = reducedCreeps['worker'] || 0;
-        if (numWorkers < 2) {
+        if (numWorkers < 3) {
           this.wrSpawnCreep(spawn, 'worker', [WORK, CARRY, CARRY, CARRY, MOVE], [], {}, 1800); // total per pattern = 300
         } else {
 
@@ -160,16 +164,41 @@ const roomManager = {
             this.wrSpawnCreep(spawn, 'mineralHarvester', [WORK, CARRY, CARRY, MOVE], [], {}, 16 * 50);
           }
 
+          // Long Range Haulers
+          const longRangeHaulers = _.filter(Game.creeps, (creep) => creep.memory.role === 'longRangeHauler');
+          if (longRangeHaulers.length < 5) {
+            let surplusRoom = null;
+            let deficitRoom = null;
+
+            for (const heapRoom in heap.rooms) {
+              if (heap.rooms[heapRoom].surplus > 1000 && (!surplusRoom || heap.rooms[heapRoom].surplus > heap.rooms[surplusRoom].surplus)) {
+                surplusRoom = heapRoom;
+              }
+              if (heap.rooms[heapRoom].demand > 1000 && (!deficitRoom || heap.rooms[heapRoom].demand > heap.rooms[deficitRoom].demand)) {
+                deficitRoom = heapRoom;
+              }
+            }
+
+            // if the current room is not the surplus room, do not spawn the creep
+            if (surplusRoom === room.name && (surplusRoom && deficitRoom)) {
+              const name = `LRHauler_${Game.time}`;
+
+              let result = this.wrSpawnCreep(spawn, 'longRangeHauler', [CARRY, CARRY, MOVE], [CARRY, CARRY, MOVE], { sourceRoom: surplusRoom, targetRoom: deficitRoom }, 9999);
+              console.log(`Spawning Long-Range Hauler ${name} from ${surplusRoom} to ${deficitRoom}: ${result}`);
+            }
+          }
+
+
           // If there are no remote workers, spawn one
           //const remoteWorkers = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteWorker');
           //console.log(`[DEBUG] remoteWorkers: ${remoteWorkers.length}`);
           //if (remoteWorkers.length < 3)
-            //this.wrSpawnCreep(spawn, 'remoteWorker', [WORK, CARRY, MOVE], [], {}, 16 * 50);
+          //this.wrSpawnCreep(spawn, 'remoteWorker', [WORK, CARRY, MOVE], [], {}, 16 * 50);
 
           // Remote Defender
-          const remoteDefenders = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteDefender');
-          if (remoteDefenders.length < 1)
-            this.wrSpawnCreep(spawn, 'remoteDefender', [TOUGH, RANGED_ATTACK, MOVE], [], {}, 9999);
+          //const remoteDefenders = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteDefender');
+          //if (remoteDefenders.length < 1)
+          //  this.wrSpawnCreep(spawn, 'remoteDefender', [TOUGH, RANGED_ATTACK, MOVE], [], {}, 9999);
 
           // If there are no remote harvesters, spawn one
           //const remoteHarvesters = _.filter(Game.creeps, (creep) => creep.memory.role === 'remoteHarvester');
@@ -192,15 +221,15 @@ const roomManager = {
 
           // Once every 10 ticks, check if adjacent rooms are claimable
           //if (Game.time % 10 === 0) {
-            // If there isn't already a claimer, make one.
-            //const drones = _.filter(Game.creeps, (creep) => creep.memory.role === 'drone');
-            //if (drones.length < 1)
-              //this.wrSpawnCreep(spawn, 'drone', [CLAIM, CLAIM, MOVE], [], { targetRoom: 'E55S17' }, 9999);
+          // If there isn't already a claimer, make one.
+          //const drones = _.filter(Game.creeps, (creep) => creep.memory.role === 'drone');
+          //if (drones.length < 1)
+          //this.wrSpawnCreep(spawn, 'drone', [CLAIM, CLAIM, MOVE], [], { targetRoom: 'E55S17' }, 9999);
           //}
         }
       }
     }
-    console.log(`[DEBUG] runSpawn(${room.name}) CPU used: ${Game.cpu.getUsed().toFixed(2)}`);
+    //console.log(`[DEBUG] runSpawn(${room.name}) CPU used: ${Game.cpu.getUsed().toFixed(2)}`);
   },
   bodyFactory: function (pattern, suffix, maxEnergy) {
     let body = [];
@@ -263,36 +292,6 @@ const roomManager = {
 
     // Memory for each creep should end up with { name, role, room, index } at a minimum
     var memoryObj = { name: '', role: role, room: spawn.room.name, index: 0 };
-
-    // Get a valid index for this room/role combination
-    //const livingCreepsInRoomWithRole = _.filter(Game.creeps, (creep) => creep.memory.role === role && creep.memory.room === spawn.room.name);
-
-    // check creepMemory for this room/role combination
-    //const creepsInMemory = _.filter(creepMemory, (c) => c.role === role && c.room === spawn.room.name);
-
-    // compare livingCreepsInRoomWithRole to creepsInMemory.
-    // If in memory but not alive, assign index to the creep
-    // If all creeps in memory are already alive, this is a new creep. Increment the index and assign  to the creep
-
-    //const collation = [];
-
-    //let maxIndex = (livingCreepsInRoomWithRole.length > creepsInMemory.length) ? livingCreepsInRoomWithRole.length : creepsInMemory.length;
-    /*
-    for (let i = 0; i < maxIndex +1; i++) {
-      collation[i] = {
-        living: livingCreepsInRoomWithRole.find(c => c.memory.index === i),
-        inMemory: creepsInMemory.find(c => c.index === i)
-      }
-
-      if (collation[i].living && collation[i].inMemory) continue;
-      if (collation[i].inMemory && !collation[i].living) {
-        memoryObj.index = i;
-        break;
-      } else {
-        memoryObj.index = i;
-        break;
-      }
-    }*/
 
     // Generate creep name and memory
     const name = `${role}_${spawn.room.name}_${Game.time}`;

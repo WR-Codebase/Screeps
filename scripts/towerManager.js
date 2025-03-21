@@ -1,38 +1,57 @@
-/*
- * Module code goes here. Use 'module.exports' to export things:
- * module.exports.thing = 'a thing';
- *
- * You can import it from another modules like this:
- * var mod = require('towerManager');
- * mod.thing == 'a thing'; // true
- */
-
 module.exports = {
-  run: function() {
+  run: function () {
     try {
       const towers = _.filter(Game.structures, s => s.structureType === STRUCTURE_TOWER);
       towers.forEach(tower => {
-        // Find the closest hostile unit
         const closestHostile = tower.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
-        // If there is a closest hostile and it's not an ally, attack it
         if (closestHostile && !global.allies.has(closestHostile.owner.username)) {
-          // Attack the closest hostile unit
           tower.attack(closestHostile);
-        } else if (tower.store.getUsedCapacity(RESOURCE_ENERGY) > 850) {
-          // Check if energy is over 500 and if so, find the most damaged structure and repair
-          // If no hostiles and energy is over 50%, find the most damaged structure and repair except for roads filter by structure.hits <= 200000
-          // && structure hits is less than 80% of hitsMax
-          // and structure has less than 150,000 hits
+        } else if (tower.store.getUsedCapacity(RESOURCE_ENERGY) > 600) {
+
           const targets = tower.room.find(FIND_STRUCTURES, {
-            filter: (structure) => structure.hits < structure.hitsMax * 0.9
-            && structure.hits < 30000
+            filter: (structure) =>
+              structure.hits < structure.hitsMax &&
+              (
+                structure.structureType === STRUCTURE_CONTAINER ||
+                (structure.structureType === STRUCTURE_ROAD && structure.hits < structure.hitsMax * 0.8) ||
+                structure.structureType === STRUCTURE_STORAGE ||
+                structure.structureType === STRUCTURE_SPAWN ||
+                structure.structureType === STRUCTURE_EXTENSION ||
+                structure.structureType === STRUCTURE_TOWER ||
+                (structure.structureType === STRUCTURE_RAMPART && structure.hits < 150000) ||
+                (structure.structureType === STRUCTURE_WALL && structure.hits < 150000)
+              )
           });
-          // && structure.structureType !== STRUCTURE_ROAD
-          
-  
+
           if (targets.length > 0) {
-            // Sort the ramparts by hits in ascending order to find the most damaged one
-            targets.sort((a, b) => a.hits - b.hits);
+            const priority = structure => {
+              switch (structure.structureType) {
+                case STRUCTURE_CONTAINER: return 1;
+                case STRUCTURE_TOWER:
+                case STRUCTURE_STORAGE:
+                case STRUCTURE_SPAWN:
+                case STRUCTURE_EXTENSION: return 2;
+                case STRUCTURE_ROAD: return 3;
+                case STRUCTURE_RAMPART:
+                case STRUCTURE_WALL: return 4;
+                default: return 5;
+              }
+            };
+
+            // Prioritize containers first, then roads fully until max, then others
+            targets.sort((a, b) => {
+              const pA = priority(a);
+              const pB = priority(b);
+              if (pA !== pB) return pA - pB;
+
+              // If it's a road, prioritize those that aren't yet full (after 80% threshold)
+              if (a.structureType === STRUCTURE_ROAD && b.structureType === STRUCTURE_ROAD) {
+                return a.hits - b.hits;
+              }
+
+              return (a.hits / a.hitsMax) - (b.hits / b.hitsMax);
+            });
+
             tower.repair(targets[0]);
           }
         }
