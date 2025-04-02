@@ -205,22 +205,47 @@ const roleCourier = {
         break;
       }
 
-      case 3: { // 📤 Step 3: Fill containers not near sources
-        const targets = creep.room.find(FIND_STRUCTURES, {
+      case 3: { // 📤 Step 3: Fill towers and containers
+        // 🏹 FIRST: Fill towers
+        const towers = creep.room.find(FIND_STRUCTURES, {
           filter: s =>
-            s.structureType === STRUCTURE_CONTAINER &&
-            !s.pos.findInRange(FIND_SOURCES, 1).length &&
+            s.structureType === STRUCTURE_TOWER &&
             s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
         });
-
-        if (targets.length > 0) {
-          const target = creep.pos.findClosestByPath(targets);
+      
+        if (towers.length > 0) {
+          const target = creep.pos.findClosestByPath(towers);
           if (creep.transfer(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
             creep.moveTo(target, { visualizePathStyle: { stroke: '#ffaa00' } });
           }
           return;
         }
-
+      
+        // 🧺 NEXT: Fill non-source containers
+        const containers = creep.room.find(FIND_STRUCTURES, {
+          filter: s =>
+            s.structureType === STRUCTURE_CONTAINER &&
+            !s.pos.findInRange(FIND_SOURCES, 1).length &&
+            s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+        });
+      
+        if (containers.length > 0) {
+          const target = creep.pos.findClosestByPath(containers);
+          if (creep.transfer(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+            creep.moveTo(target, { visualizePathStyle: { stroke: '#ffaa00' } });
+          }
+          return;
+        }
+      
+        // 📦 Lastly: Deposit to storage if nothing else
+        if (creep.room.storage && creep.room.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+          if (creep.transfer(creep.room.storage, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+            creep.moveTo(creep.room.storage, { visualizePathStyle: { stroke: '#ffaa00' } });
+          }
+          return;
+        }
+      
+        // ♻️ If all else is full, reset
         creep.memory.roundStep = 1;
         break;
       }
