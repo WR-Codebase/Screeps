@@ -1,10 +1,10 @@
-openapi: 3.0.0
+openapi: 3.1.0
 info:
   title: Screeps API
   description: API for interacting with the Screeps game server, focusing on room and creeps interactions
   version: "1.0.0"
 servers:
-  - url: 'https://screeps.com/api'
+  - url: "https://screeps.com/api"
 components:
   schemas:
     RoomStatus:
@@ -64,6 +64,99 @@ components:
           spawning:
             type: boolean
 paths:
+  /game/room-overview:
+    get:
+      summary: Get an overview of a game room
+      operationId: getRoomOverview
+      parameters:
+        - name: shard
+          in: query
+          required: true
+          schema:
+            type: string
+          description: our hive is on shard3
+        - name: interval
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: The interval in ticks for the overview data.
+        - name: room
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The name of the room to get an overview for. We are Wooden Robot. Our rooms are E51N15 through E53N17
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: integer
+                  data:
+                    type: object
+                    properties:
+                      energyHarvested:
+                        type: integer
+                      energyControl:
+                        type: integer
+                      energySpentOnConstruction:
+                        type: integer
+                      energySpentOnCreeps:
+                        type: integer
+                      controllerProgress:
+                        type: integer
+                      controllerProgressTotal:
+                        type: integer
+                      controllerLevel:
+                        type: integer
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Room not found
+
+  /user/memory:
+    get:
+      summary: Get User Memory
+      operationId: getUserMemory
+      tags:
+        - User
+      parameters:
+        - in: query
+          name: shard
+          schema:
+            type: string
+          required: false
+          description: The name of the shard to retrieve memory from.
+        - in: query
+          name: path
+          schema:
+            type: string
+          required: false
+          description: The path within memory to retrieve.
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _id:
+                    type: string
+                  user:
+                    type: string
+                  shard:
+                    type: string
+                  memory:
+                    type: object
+                    additionalProperties: true
   /user/code:
     get:
       summary: Get the current state of the code in your colony
@@ -77,15 +170,15 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: List of user's creeps
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CreepInfo'
+                $ref: "#/components/schemas/CreepInfo"
   /user/console:
     post:
-      summary: Execute a command in the user's console
+      summary: Execute a command in the Screeps console
       operationId: executeCommand
       requestBody:
         required: true
@@ -99,7 +192,7 @@ paths:
               properties:
                 expression:
                   type: string
-                  description: The console command expression to be executed.
+                  description: The console command expression to be executed. If unspecified, console.log("Hello World");
                 shard:
                   type: string
                   description: The shard where the command should be executed. We use 'shard3'.
@@ -146,3 +239,75 @@ paths:
                     items:
                       type: string
                       description: MongoDB IDs for the inserted documents.
+  /game/room-terrain:
+    get:
+      summary: Get terrain data for a specific room
+      operationId: getRoomTerrain
+      parameters:
+        - name: room
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The name of the room (e.g., E55S18)
+        - name: shard
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The name of the shard (e.g., shard3)
+      responses:
+        '200':
+          description: Terrain data for the room
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TerrainData'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Room not found
+  /game/room-objects:
+    get:
+      summary: Get objects in a room
+      operationId: getRoomObjects
+      parameters:
+        - name: room
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The name of the room (e.g., E55S18)
+        - name: shard
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The name of the shard (e.g., shard3)
+      responses:
+        '200':
+          description: Objects in the room
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: integer
+                  data:
+                    type: object
+                    properties:
+                      room:
+                        type: string
+                      status:
+                        type: string
+                      owner:
+                        $ref: '#/components/schemas/RoomStatus'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Room not found

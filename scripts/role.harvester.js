@@ -1,120 +1,55 @@
 const Traveler = require('Traveler');
+const trafficManager = require('trafficManager');
 
-// role.harvester.js
 const roleHarvester = {
   run: function (creep) {
-    //console.log(`Running harvester ${creep.name}`);
-
-    // Check creep memory for name, role, index
+    // === Creep Setup ===
     if (!creep.memory.role) creep.memory.role = 'harvester';
 
-    let index = 0;
-    // Index
-    if (!creep.memory.index) {
-      let maxIndex = 0;
-      // get number of sources in the room
-      const sources = creep.room.find(FIND_SOURCES);
-      maxIndex = sources.length;
-
-      // Check Memory.creeps for harvesters in this room. If there's more harvesters than there are indexed memory entries, reconstruct the memory
-      const harvesters = _.filter(Game.creeps, (c) => c.memory.role === 'harvester' && c.room.name === creep.room.name);
-      //console.log(`Found ${harvesters.length} harvesters in room ${creep.room.name}`);
-
-      // list of harvesters in memory for this room (Memory.creeps with role = harvester  and room = creep.room.name)
-      const harvestersInMemory = _.filter(Memory.creeps, (c) => c.role === 'harvester' && c.room === creep.room.name);
-      //console.log(`Found ${harvestersInMemory.length} harvesters in memory for room ${creep.room.name}`);
-
-      // for harvesters in memory, while index < maxIndex, if the harvester in memory is not in assign index to harvester
-      for (harvester of harvestersInMemory) {
-        // If it's a valid index and the harvester doesn't exist in harvesters, assign the index to the creep
-        if (index <= maxIndex && !harvesters.find(h => h.name === harvester.name)) {
-          creep.memory.index = index;
-          break;
-        }
-      }
-    }
-
-    // Name
-    // If the creep.name or the creep.memory.name is not harvester_${creep.room.name}_${creep.memory.index}, set both
-    const correctName = `harvester_${creep.room.name}_${creep.memory.index}`;
-    if (creep.name !== correctName || creep.memory.name !== correctName) {
-      creep.name = correctName;
-      creep.memory.name = correctName;
-    }
-
-
-    // sourceId
+    // === Assign Source ===
     if (!creep.memory.sourceId) {
-      // Find a source that does not yet have a harvester
-      console.log(`Harvester ${creep.name} does not have a source assigned`);
-      // Find all sources in the room
       const sources = creep.room.find(FIND_SOURCES);
-      // Assign a source to this creep
+      const harvesters = _.filter(Game.creeps, (c) => c.memory.role === 'harvester' && c.memory.sourceId);
       for (const source of sources) {
-        // Check if a harvester is already assigned to this source
-        const harvesters = _.filter(Game.creeps, (c) => c.memory.sourceId === source.id && c.memory.role === 'harvester');
-        if (harvesters.length < 1) {
+        if (!harvesters.find(h => h.memory.sourceId === source.id)) {
           creep.memory.sourceId = source.id;
           break;
         }
       }
-    } else {
-      // Check if the assigned source is assigned to any creep other than the current one
-      // if any other creep has the same source id, find a new one
-      // Check room sources for an unaassigned source
-      // check harvesters in the room for their sources
     }
 
     const source = Game.getObjectById(creep.memory.sourceId);
-    // Find the link within two spaces from the target source
-    const link = source.pos.findInRange(FIND_MY_STRUCTURES, 2, {
-      filter: (structure) => structure.structureType === STRUCTURE_LINK
+    if (!source) return;
+
+    const container = source.pos.findInRange(FIND_STRUCTURES, 1, {
+      filter: (s) => s.structureType === STRUCTURE_CONTAINER
     })[0];
 
-    // if used capacity is greater than 0, attempt to transfer energy to a link and the link has free space
-    if (link && creep.store.getUsedCapacity() > 0 && link.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-      // Attempt to transfer energy to the link
-      // amount to transfer is link max minus link used
-      const amountToTransfer = link.store.getFreeCapacity(RESOURCE_ENERGY);
-      const transferResult = creep.transfer(link, RESOURCE_ENERGY, amountToTransfer);
-      if (transferResult === OK) {
-        //console.log(`Harvester ${creep.name} transferred energy to link at ${link.pos}`);
-      } else if (transferResult === ERR_NOT_IN_RANGE) {
-        // This should not happen since we're checking for links within 1 tile, but it's a good safety check
-        creep.travelTo(link, {
-          visualizePathStyle: { stroke: '#fa0' },
-          ignoreCreeps: false,
-          reusePath: 20,  // Caches path for 20 ticks
-          maxOps: 100      // Limits CPU spent on pathfinding
-        });
-      }
+    const link = source.pos.findInRange(FIND_MY_STRUCTURES, 2, {
+      filter: (s) => s.structureType === STRUCTURE_LINK
+    })[0];
+
+    const targetPos = container ? container.pos : source.pos;
+
+    // === Move Only Once ===
+    if (!creep.pos.isEqualTo(targetPos)) {
+      creep.moveTo(targetPos, {
+        visualizePathStyle: { stroke: '#fa0' },
+        ignoreCreeps: true // 🟢 Always true per Royal Decree
+      });
+      return;
     }
 
-    // If the creep is full, drop the energy on the ground
-    if (creep.store.getFreeCapacity() === 0) {
-      creep.drop(RESOURCE_ENERGY);
+    // === Harvest or Transfer ===
+    // If free capacity is greater than 4 * number of work parts, harvest, else transfer
+    const workParts = creep.body.filter(part => part.type === WORK).length;
+    if (creep.store.getFreeCapacity() > 4 * workParts) {
+      creep.harvest(source);
     } else {
-      // Proceed to harvest from the assigned source
-        // If there's a container next to the source move there first
-        const container = source.pos.findInRange(FIND_STRUCTURES, 1, {
-          filter: (structure) => structure.structureType === STRUCTURE_CONTAINER
-        })[0];
-        if (container) {
-          creep.travelTo(container, {
-            visualizePathStyle: { stroke: '#fa0' },
-            ignoreCreeps: false,
-            reusePath: 20,  // Caches path for 20 ticks
-            maxOps: 100      // Limits CPU spent on pathfinding
-          });
-        }
-      //console.log(`Harvester ${creep.memory.name} is assigned to source ${source.id}`);
-      if (creep.harvest(source) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(source, {
-          visualizePathStyle: { stroke: '#fa0' },
-          ignoreCreeps: false,
-          reusePath: 20,  // Caches path for 20 ticks
-          maxOps: 100      // Limits CPU spent on pathfinding
-        });
+      if (link && link.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+        creep.transfer(link, RESOURCE_ENERGY);
+      } else {
+        creep.drop(RESOURCE_ENERGY);
       }
     }
   }

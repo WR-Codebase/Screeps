@@ -1,0 +1,36 @@
+{
+  "objects": [
+    {
+      "_id": "5bbcb05b9099fc012e63c050",
+      "room": "E55S18",
+      "type": "source",
+      "x": 31,
+      "y": 25,
+      "energyCapacity": 3000
+    },
+    {
+      "_id": "5bbcb05b9099fc012e63c051",
+      "room": "E55S18",
+      "type": "source",
+      "x": 8,
+      "y": 31,
+      "energyCapacity": 3000
+    },
+    {
+      "_id": "5bbcb709d867df5e54207cb3",
+      "type": "mineral",
+      "density": 3,
+      "mineralType": "K",
+      "x": 41,
+      "y": 28,
+      "room": "E55S18"
+    },
+    {
+      "_id": "5bbcb05b9099fc012e63c052",
+      "room": "E55S18",
+      "type": "controller",
+      "x": 30,
+      "y": 43
+    }
+  ]
+}

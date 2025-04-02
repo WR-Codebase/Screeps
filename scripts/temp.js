@@ -402,11 +402,84 @@ const distanceTransform = function (
     return distanceCM
 }
 
+const debugVis = function () {
+    //Debug info for real time updates.
+    //
+    const roomName = Memory.rooms[0].name; // Change this to a room you have vision in
+    const vis = new RoomVisual(roomName);
+    if (Memory.peakcpu === undefined) {
+        Memory.peakcpu = 0;
+    }
+
+    const peakcpu = Memory.peakcpu;
+
+    if (Game.cpu.getUsed() > peakcpu) {
+        Memory.peakcpu = Game.cpu.getUsed().toFixed(2);
+    }
+
+    if (peakcpu > (Game.cpu.limit)) {
+        vis.text(PEAK CPU: ${ peakcpu }, 1, 2, {
+            align: 'left',
+            color: '#ff1111',
+            font: '2 Courier New'
+        });
+    }
+    else if (peakcpu <= (Game.cpu.limit) && peakcpu > (Game.cpu.limit / 2)) {
+        vis.text(PEAK CPU: ${ peakcpu }, 1, 2, {
+            align: 'left',
+            color: '#ff6644',
+            font: '2 Courier New'
+        });
+    }
+    else if (peakcpu < (Game.cpu.limit / 2)) {
+        vis.text(PEAK CPU: ${ peakcpu }, 1, 2, {
+            align: 'left',
+            color: '#11ff11',
+            font: '2 Courier New'
+        });
+    }
+
+
+    vis.text(CPU: ${ Game.cpu.getUsed().toFixed(2) } / ${ Game.cpu.limit }, 1, 4, {
+        align: 'left',
+        color: '#1166ff',
+        font: '2 Courier New'
+    });
+
+    vis.text(Bucket: ${ Game.cpu.bucket }, 1, 6, {
+        align: 'left',
+        color: '#1166ff',
+        font: '2 Courier New'
+    });
+
+    vis.text(Controller Level: ${ Game.rooms[roomName].controller.level }, 1, 7, {
+        align: 'left',
+        color: '#1166ff',
+        font: '0.5 Courier New'
+    });
+    vis.text(Room controller Progress: ${ Game.rooms[roomName].controller.progress + '/' + Game.rooms[roomName].controller.progressTotal }, 1, 7.5, {
+
+        align: 'left',
+        color: '#1166ff',
+        font: '0.5 Courier New'
+    });
+    vis.text(Energy: ${ Game.rooms[roomName].energyAvailable } / ${ Game.rooms[roomName].energyCapacityAvailable }, 1, 8, {
+        align: 'left',
+        color: '#1166ff',
+        font: '0.5 Courier New'
+    });
+    if (Game.cpu.bucket === 10000) {
+        Game.cpu.generatePixel();
+    }
+
+
+}
+
 module.exports.run = run
 module.exports.shortStructures = shortStructures
-    // module.exports.memInit = memInit
-    // module.exports.placeStamp = placeStamp
-    // module.exports.findBestSpot = findBestSpot
-    // module.exports.distanceTransform = distanceTransform
-    // module.exports.diagonalDistanceTransform = diagonalDistanceTransform
+// module.exports.memInit = memInit
+// module.exports.placeStamp = placeStamp
+// module.exports.findBestSpot = findBestSpot
+// module.exports.distanceTransform = distanceTransform
+// module.exports.diagonalDistanceTransform = diagonalDistanceTransform
 

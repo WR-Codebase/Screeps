@@ -20,9 +20,21 @@ const roleNurse = {
     if (creep.memory.nursing) {
       jobs.nourish(creep);
     } else {
-      // Storage, then container, then dropped resources
-      creep.memory.energyPriority = ['STORAGE','TOMBSTONE','RUIN','CONTAINER_STORAGE', 'DROPPED_RESOURCE'];
-      jobs.collect(creep);
+      // If the creep is not full energy, if storage has energy collect from it, else use the collect job
+      if (creep.store.getUsedCapacity(RESOURCE_ENERGY) < creep.store.getCapacity(RESOURCE_ENERGY)) {
+        if (creep.room.storage && creep.room.storage.store[RESOURCE_ENERGY] > 0) {
+          // If the creep is not full energy, if storage has energy collect from it, else use the collect job
+          if (creep.withdraw(creep.room.storage, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+            creep.moveTo(creep.room.storage, { visualizePathStyle: { stroke: '#ffaa00' } });
+          }
+        } else {
+          creep.memory.energyPriority = ['STORAGE', 'TOMBSTONE', 'RUIN', 'CONTAINER_STORAGE', 'DROPPED_RESOURCE'];
+          jobs.collect(creep);
+        }
+      } else {
+        // creep is full, switch to nursing
+        creep.memory.nursing = true;
+      }
     }
 
     if (wasNursing !== creep.memory.nursing) {

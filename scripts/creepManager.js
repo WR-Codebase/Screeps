@@ -20,8 +20,10 @@ const roleRemoteHarvester = require('./role.remoteHarvester');
 const roleRemoteHauler = require('./role.remoteHauler');
 const roleSoldier = require('./role.soldier');
 const roleRemoteDefender = require('./role.remoteDefender');
-const mineralHarvester = require('role.mineralHarvester');
-const longRangeHauler = require('role.longRangeHauler');
+const roleMineralHarvester = require('role.mineralHarvester');
+const roleLongRangeHauler = require('role.longRangeHauler');
+const roleCourier = require('role.courier');
+const roleColonist = require('role.colonist')
 
 module.exports = {
     // Run creeps
@@ -37,22 +39,30 @@ module.exports = {
       remoteWorker: remoteWorker,
       remoteHarvester: roleRemoteHarvester,
       remoteHauler: roleRemoteHauler,
-      soldier: roleSoldier,
+      //soldier: roleSoldier,
       remoteDefender: roleRemoteDefender,
-      mineralHarvester: mineralHarvester,
-      longRangeHauler: longRangeHauler
+      mineralHarvester: roleMineralHarvester,
+      //longRangeHauler: roleLongRangeHauler,
+      courier: roleCourier,
+      //colonist: roleColonist
     },
 
     run: function () {
-      for (const name in Game.creeps) {
-      const creep = Game.creeps[name];
-      //console.log(`[DEBUG] Running creep ${creep.name}, creep role: ${creep.memory.role}`);
-      if (this.roleMap[creep.memory.role]) {
-        if (!creep.memory.room) creep.memory.room = creep.room.name;
+      try {
+        for (const name in Game.creeps) {
+          const creep = Game.creeps[name];
+          //console.log(`[DEBUG] Running creep ${creep.name}, creep role: ${creep.memory.role}`);
+          if (this.roleMap[creep.memory.role]) {
+            if (!creep.memory.room) creep.memory.room = creep.room.name;
 
-        this.roleMap[creep.memory.role].run(creep);
+            this.roleMap[creep.memory.role].run(creep);
+          }
+          //console.log(`[DEBUG] creepManager.run(${name}) CPU Used: ${Game.cpu.getUsed().toFixed(2)}`);
+          //if (Game.cpu.getUsed().toFixed(2) > 19) return;
+
+        }
+      } catch (e) {
+        console.log(`Error in creepManager.run() ${e}`);
       }
-      //console.log(`[DEBUG] creepManager.run CPU Used: ${Game.cpu.getUsed().toFixed(2)}`);
     }
-  }
 };

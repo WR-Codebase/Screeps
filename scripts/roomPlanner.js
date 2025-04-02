@@ -16,10 +16,10 @@ const roomPlanner = {
   ],
   run: function (room) {
 
-    if (room.name !== 'E55S17') return;
+    //if (room.name !== 'E55S17') return;
     try {
       console.log(`[INFO] Running room planner for room ${room.name}`);
-      //const vis = new RoomVisual(room.name);
+      const vis = new RoomVisual(room.name);
 
       if (heap.rooms === undefined) heap.rooms = {};
       if (heap.rooms[room.name] === undefined) heap.rooms[room.name] = {};
@@ -31,7 +31,7 @@ const roomPlanner = {
       // If distanceMap is not set, set it
       if (roomData.distanceMap === undefined) {
         // distaneMap is undefined
-        //console.log(`[INFO] Running distance transform for room ${room.name}`);
+        console.log(`[INFO] Running distance transform for room ${room.name}`);
         roomData.distanceMap = distanceTransform(room.name);
       }
 
@@ -48,10 +48,10 @@ const roomPlanner = {
 
           let thisXY = roomData[x][y];
           if (thisXY.terrainType !== TERRAIN_MASK_WALL) {
-            //let value = roomData.distanceMap.get(x, y);
-            //let color = this.getHeatmapColor(value, min, max);
+            let value = roomData.distanceMap.get(x, y);
+            let color = this.getHeatmapColor(value, min, max);
 
-            //vis.circle(x, y, {radius: Math.max(value / 12.5),fill: color, opacity: 0.5});
+            vis.circle(x, y, {radius: Math.max(value / 12.5),fill: color, opacity: 0.5});
 
             // add the distance value text
             //vis.text(value, x, y, { color: 'white', stroke: 'black', font: 0.5 });
@@ -125,7 +125,7 @@ const roomPlanner = {
             if (expectedStructure === STRUCTURE_ROAD || expectedStructure === STRUCTURE_CONTAINER || expectedStructure === STRUCTURE_SPAWN) {
               const existingConstruction = room.lookForAt(LOOK_CONSTRUCTION_SITES, posX, posY);
               if (!structuresAtPos.length && !existingConstruction.length) {
-                room.createConstructionSite(posX, posY, expectedStructure);
+                //room.createConstructionSite(posX, posY, expectedStructure);
               }
             } else {
               // 🔍 Check if the structure can be built
@@ -156,7 +156,7 @@ const roomPlanner = {
               }
 
               // 🏗️ Place construction site for valid structures
-              room.createConstructionSite(posX, posY, expectedStructure);
+              //room.createConstructionSite(posX, posY, expectedStructure);
             }
           }
         }
@@ -321,7 +321,7 @@ const roomPlanner = {
           let dtValue = roomData.distanceMap.get(x, y);
           if (dtValue > (coreSize + 2) / 2) {
             dtTiles.push({ x, y, value: dtValue });
-            vis.circle(x, y, { fill: 'yellow', radius: 0.3, stroke: 'black' });
+            //vis.circle(x, y, { fill: 'yellow', radius: 0.3, stroke: 'black' });
           }
         }
       }

@@ -13,7 +13,7 @@ const jobs = {
       if (creep.store[RESOURCE_ENERGY] >= 50) {
         const target = creep.pos.findClosestByPath(towers);
         if (creep.transfer(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-          creep.travelTo(target, { visualizePathStyle: { stroke: '#0af' }, ignoreCreeps: true, stuckValue: 2 });
+          creep.moveTo(target, { visualizePathStyle: { stroke: '#0af' }, ignoreCreeps: true, stuckValue: 2 });
         }
       } else {
         // If the creep has less than 50 energy, collect more
@@ -51,7 +51,7 @@ const jobs = {
       }
       //console.log(`${creep.name} attempting to transfer to ${target.structureType} at ${target.pos}, Energy: ${creep.store.getUsedCapacity(RESOURCE_ENERGY)}`);
       if (creep.transfer(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(target, { visualizePathStyle: { stroke: '#f96' }, ignoreCreeps: true, stuckValue: 2 });
+        creep.moveTo(target, { visualizePathStyle: { stroke: '#f96' }, ignoreCreeps: true, stuckValue: 2 });
       } else if (creep.transfer(target, RESOURCE_ENERGY) === OK) {
         //console.log(`${creep.name} transferred energy to ${target.structureType}`);
       } else {
@@ -87,43 +87,46 @@ const jobs = {
     if (creep.memory.targetId) {
       const target = Game.getObjectById(creep.memory.targetId);
       if (creep.transfer(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(target, { visualizePathStyle: { stroke: '#f96' }, ignoreCreeps: true, stuckValue: 2 });
+        creep.moveTo(target, { visualizePathStyle: { stroke: '#f96' }, ignoreCreeps: true, stuckValue: 2 });
       }
     }
   },
-  getRepairTarget: function (creep) {
-    const targets = creep.room.find(FIND_STRUCTURES, { filter: object => object.hits < object.hitsMax });
-    const untargetedTargets = targets.filter(target => {
-      return !_.some(Game.creeps, { memory: { target: target.id } });
+  getRepairTarget(creep) {
+    const repairTargets = creep.room.find(FIND_STRUCTURES, {
+      filter: s =>
+        s.hits < s.hitsMax &&
+        (
+          s.structureType !== STRUCTURE_ROAD || s.hits < s.hitsMax * 0.8
+        )
     });
 
-    if (untargetedTargets.length > 0) {
-      untargetedTargets.sort((a, b) => a.hits - b.hits);
-      creep.memory.target = untargetedTargets[0].id;
+    // 🧼 Sort by lowest hits
+    repairTargets.sort((a, b) => a.hits - b.hits);
+
+    // if multiple have the same lowest hits pick the closest
+    const lowestHits = repairTargets[0].hits;
+    const lowestHitsTargets = repairTargets.filter(s => s.hits === lowestHits);
+
+    const target = creep.pos.findClosestByPath(lowestHitsTargets);
+
+    if (target) {
+      creep.memory.target = target.id;
     }
   },
-  repair: function (creep) {
-    if (creep.memory.target) {
-      //console.log(`Creep ${creep.name} is repairing target ${creep.memory.target}`);
-    } else {
-      //console.log(`Creep ${creep.name} has no repair target`);
+
+  repair(creep) {
+    if (!creep.memory.target) {
       this.getRepairTarget(creep);
-      //console.log(`Creep ${creep.name} has new repair target ${creep.memory.target}`);
     }
 
-    const targetToRepair = Game.getObjectById(creep.memory.target);
-    if (targetToRepair) {
-      if (creep.repair(targetToRepair) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(targetToRepair, {
-          visualizePathStyle: { stroke: '#fa0' },
-          ignoreCreeps: true,
-          stuckValue: 2,
-          reusePath: 20,  // Caches path for 20 ticks
-          maxOps: 100      // Limits CPU spent on pathfinding
-        });
+    const target = Game.getObjectById(creep.memory.target);
+    if (target) {
+      if (creep.repair(target) === ERR_NOT_IN_RANGE) {
+        creep.moveTo(target);
       }
-      // If target is full, unset target
-      if (targetToRepair.hits === targetToRepair.hitsMax) {
+
+      // 🧼 Clean up if fully repaired
+      if (target.hits === target.hitsMax) {
         delete creep.memory.target;
       }
     } else {
@@ -131,18 +134,47 @@ const jobs = {
     }
   },
   build: function (creep) {
-    let target;
-    if (creep.memory.targetId) {
-      target = creep.memory.targetId;
-    } else {
-      target = creep.pos.findClosestByPath(FIND_CONSTRUCTION_SITES);
-    }
-    if (target) {
-      if (creep.build(target) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(target, { visualizePathStyle: { stroke: '#fa0' }, ignoreCreeps: true, stuckValue: 2 });
-      }
-    } else {
+    const sites = creep.room.find(FIND_CONSTRUCTION_SITES);
+    if (sites.length === 0) {
       creep.memory.status = 'idle';
+      creep.memory.targetId = null;
+      return;
+    }
+  
+    let target = creep.memory.targetId ? Game.getObjectById(creep.memory.targetId) : null;
+  
+    if (!target) {
+      const sorted = sites.slice().sort((a, b) =>
+        (b.progress / b.progressTotal) - (a.progress / a.progressTotal)
+      );
+
+      // Get the top value
+      const topRatio = sorted[0].progress / sorted[0].progressTotal;
+
+      // Find all sites that have the top value
+      const tied = sorted.filter(s => (s.progress / s.progressTotal) === topRatio);
+
+      // Find the closest site with the top value
+      target = creep.pos.findClosestByPath(tied);
+  
+      if (target) {
+        creep.memory.targetId = target.id;
+        if (Memory.debug) {
+          console.log(`[BUILD] New target: ${target.structureType} ${target.progress}/${target.progressTotal}`);
+        }
+      } else {
+        creep.memory.status = 'idle';
+        creep.memory.targetId = null;
+        return;
+      }
+    }
+  
+    if (target && creep.build(target) === ERR_NOT_IN_RANGE) {
+      creep.moveTo(target, {
+        visualizePathStyle: { stroke: '#fa0' },
+        ignoreCreeps: true,
+        stuckValue: 2
+      });
     }
   },
   collect: function (creep) {
@@ -275,7 +307,7 @@ const jobs = {
 
     // Attempt to interact with the target based on its type
     if (target instanceof Resource && creep.pickup(target) === ERR_NOT_IN_RANGE) {
-      creep.travelTo(target, { visualizePathStyle: { stroke: '#0fa' }, ignoreCreeps: true, stuckValue: 2 });
+      creep.moveTo(target, { visualizePathStyle: { stroke: '#0fa' }, ignoreCreeps: true, stuckValue: 2 });
     } else if ((target instanceof Tombstone
       || target instanceof Ruin
       || target instanceof StructureContainer
@@ -284,10 +316,10 @@ const jobs = {
       && creep.withdraw(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
       //console.log(`${creep.name} found ${target}, moving to it now`);
 
-      creep.travelTo(target, { visualizePathStyle: { stroke: '#0fa' }, ignoreCreeps: true, stuckValue: 2 });
+      creep.moveTo(target, { visualizePathStyle: { stroke: '#0fa' }, ignoreCreeps: true, stuckValue: 2 });
     } else if (target instanceof Source
       && creep.harvest(target) === ERR_NOT_IN_RANGE) {
-      creep.travelTo(target, { visualizePathStyle: { stroke: '#0fa' }, ignoreCreeps: true, stuckValue: 2 });
+      creep.moveTo(target, { visualizePathStyle: { stroke: '#0fa' }, ignoreCreeps: true, stuckValue: 2 });
     }
   },
 
@@ -303,9 +335,9 @@ const jobs = {
     }
 
     if (creep.memory.upgrading) {
-              // if room sign is not "🤖 Beep boop! 🤖" set it
+      // if room sign is not "🤖 Beep boop! 🤖" set it
       if (creep.upgradeController(creep.room.controller) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(creep.room.controller, { visualizePathStyle: { stroke: '#fa0' }, ignoreCreeps: true, stuckValue: 2 });
+        creep.moveTo(creep.room.controller, { visualizePathStyle: { stroke: '#fa0' }, ignoreCreeps: true, stuckValue: 2 });
       }
     } else {
       this.collect(creep);

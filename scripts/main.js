@@ -14,24 +14,37 @@ module.exports.loop = function () {
   try {
     console.log(`Tick START: ${Game.time} | CPU: ${Game.cpu.getUsed().toFixed(2)} | Memory: ${JSON.stringify(RawMemory.get().length)} bytes`);
 
-    checkEnergyBalance();
-    
+    //checkEnergyBalance();
+
 
     // tick CPU used before roomManager.run() to ensure all rooms are in memory
     //console.log(`CPU used before roomManager.run(): ${Game.cpu.getUsed().toFixed(2)}`);
     // Run rooms
     roomManager.run();
+    // tick CPU used after roomManager.run() to ensure all rooms are in memory
+    console.log(`CPU used after roomManager.run(): ${Game.cpu.getUsed().toFixed(2)}`);
+    if (Game.cpu.getUsed().toFixed(2) > 19) return;
+    // Run towers
+    towerManager.run();
+    // tick CPU used after towerManager.run() to ensure all towers are in memory
+    console.log(`CPU used after towerManager.run(): ${Game.cpu.getUsed().toFixed(2)}`);
+    if (Game.cpu.getUsed().toFixed(2) > 19) return;
 
     // Run creeps
     creepManager.run();
+    // tick CPU used after creepManager.run() to ensure all creeps are in memory
+    console.log(`CPU used after creepManager.run(): ${Game.cpu.getUsed().toFixed(2)}`);
+    if (Game.cpu.getUsed().toFixed(2) > 19) return;
 
-    // Run towers
-    towerManager.run();
+
+    _.forEach(Game.rooms, room => {
+      trafficManager.run(room);
+    });
+
 
 
     // Run Inter-Room Creeps
 
-    console.log(`Tick END: ${Game.time} | CPU: ${Game.cpu.getUsed().toFixed(2)} | Memory: ${JSON.stringify(RawMemory.get().length)} bytes`);
 
     if (Game.time % 100 === 0) {
       // Periodically clear memory
@@ -40,10 +53,9 @@ module.exports.loop = function () {
       }
       purgeMemory();
     }
-    _.forEach(Game.rooms, room => {
-      trafficManager.run(room);
-    });
-    } catch (e) {
+    console.log(`Tick END: ${Game.time} | CPU: ${Game.cpu.getUsed().toFixed(2)} | Memory: ${JSON.stringify(RawMemory.get().length)} bytes`);
+
+  } catch (e) {
     console.log(`Error in main loop: ${e}`);
   };
 
@@ -56,11 +68,11 @@ function checkEnergyBalance() {
 
     const energyAvailable = room.energyAvailable;
     const energyCapacity = room.energyCapacityAvailable;
-    
+
     // If spawns and extensions are full, there is no demand
     const demand = (energyAvailable < energyCapacity) ? (energyCapacity - energyAvailable) : 0;
 
-    console.log(`Room ${roomName} Energy Available: ${energyAvailable}, Energy Capacity: ${energyCapacity}, Demand: ${demand}`);
+    //console.log(`Room ${roomName} Energy Available: ${energyAvailable}, Energy Capacity: ${energyCapacity}, Demand: ${demand}`);
 
     // Containers that are NOT adjacent to a source
     const containers = room.find(FIND_STRUCTURES, {
@@ -71,14 +83,14 @@ function checkEnergyBalance() {
     const containerCapacity = _.sum(containers, (c) => c.store.getCapacity(RESOURCE_ENERGY));
     const containerDemand = containerCapacity - containerEnergy;
 
-    console.log(`Room ${roomName} Container Energy: ${containerEnergy}, Container Capacity: ${containerCapacity}, Container Demand: ${containerDemand}`);
+    //console.log(`Room ${roomName} Container Energy: ${containerEnergy}, Container Capacity: ${containerCapacity}, Container Demand: ${containerDemand}`);
 
     const storageEnergy = room.storage ? room.storage.store[RESOURCE_ENERGY] : 0;
-    
+
     // Unified surplus calculation
     const surplus = storageEnergy - (demand + containerDemand);
 
-    console.log(`Room ${roomName} Adjusted Demand: ${demand + containerDemand}, Surplus: ${surplus}`);
+    //console.log(`Room ${roomName} Adjusted Demand: ${demand + containerDemand}, Surplus: ${surplus}`);
 
     heap.rooms[roomName] = {
       demand: demand + containerDemand,

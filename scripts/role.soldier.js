@@ -1,7 +1,7 @@
 const roleSoldier = {
   /** @param {Creep} creep **/
   run: function (creep) {
-    const targetRoom = 'E55S17'; // Room to capture
+    const targetRoom = 'E51S17'; // Room to capture
     const homeRoom = 'E56S17'; // Home room for recycling
 
     // Move to the target room

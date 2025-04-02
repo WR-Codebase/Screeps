@@ -33,7 +33,7 @@ const rolePicker = {
     target = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, { filter: (r) => r.resourceType !== RESOURCE_ENERGY });
     if (target) {
       if (creep.pickup(target) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(target, { visualizePathStyle: { stroke: '#ffaa00' } });
+        creep.moveTo(target, { visualizePathStyle: { stroke: '#ffaa00' } });
       }
       return;
     }
@@ -42,7 +42,7 @@ const rolePicker = {
     target = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, { filter: (r) => r.resourceType === RESOURCE_ENERGY });
     if (target) {
       if (creep.pickup(target) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(target, { visualizePathStyle: { stroke: '#ffaa00' } });
+        creep.moveTo(target, { visualizePathStyle: { stroke: '#ffaa00' } });
       }
       return;
     }
@@ -52,7 +52,7 @@ const rolePicker = {
     if (target) {
       let resourceType = Object.keys(target.store).find(type => target.store[type] > 0);
       if (resourceType && creep.withdraw(target, resourceType) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(target, { visualizePathStyle: { stroke: '#ff00ff' } });
+        creep.moveTo(target, { visualizePathStyle: { stroke: '#ff00ff' } });
       }
       return;
     }
@@ -62,9 +62,15 @@ const rolePicker = {
     if (target) {
       let resourceType = Object.keys(target.store).find(type => target.store[type] > 0);
       if (resourceType && creep.withdraw(target, resourceType) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(target, { visualizePathStyle: { stroke: '#ff00ff' } });
+        creep.moveTo(target, { visualizePathStyle: { stroke: '#ff00ff' } });
       }
       return;
+    }
+
+    // no target found, switch to delivering
+    if (creep.store.getUsedCapacity() > 0) {
+      creep.memory.picking = false;
+      creep.say('🚚 Delivering');
     }
   },
 
@@ -78,7 +84,7 @@ const rolePicker = {
       // Deliver minerals to storage if it exists and has space
       if (creep.room.storage && creep.room.storage.store.getFreeCapacity(resourceType) > 0) {
         if (creep.transfer(creep.room.storage, resourceType) === ERR_NOT_IN_RANGE) {
-          creep.travelTo(creep.room.storage, { visualizePathStyle: { stroke: '#ffaa00' } });
+          creep.moveTo(creep.room.storage, { visualizePathStyle: { stroke: '#ffaa00' } });
         }
         return;
       }
@@ -94,11 +100,19 @@ const rolePicker = {
   
       if (target) {
         if (creep.transfer(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-          creep.travelTo(target, { visualizePathStyle: { stroke: '#0af' } });
+          creep.moveTo(target, { visualizePathStyle: { stroke: '#0af' } });
         }
         return;
       }
   
+      // Containers are full, deliver to storage
+      if (creep.room.storage && creep.room.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+        if (creep.transfer(creep.room.storage, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+          creep.moveTo(creep.room.storage, { visualizePathStyle: { stroke: '#0af' } });
+        }
+        return;
+      }
+
       // If all containers are full, call `jobs.nourish`
       jobs.nourish(creep);
     }

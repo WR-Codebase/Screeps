@@ -1,6 +1,3 @@
-/**
- * The Hauler role is responsible for carrying energy from drop harvesters to storage or other structures.
- */
 const roleHauler = {
   run: function (creep) {
     const wasDelivering = creep.memory.delivering;
@@ -15,10 +12,8 @@ const roleHauler = {
       this.deliverEnergy(creep);
     }
 
-    if (wasDelivering !== creep.memory.delivering && creep.memory.delivering) {
-      creep.say('🚚 deliver');
-    } else if (wasDelivering !== creep.memory.delivering && !creep.memory.delivering) {
-      creep.say('🔄 collect');
+    if (wasDelivering !== creep.memory.delivering) {
+      creep.say(creep.memory.delivering ? '🚚 deliver' : '🔄 collect');
     }
   },
 
@@ -29,91 +24,103 @@ const roleHauler = {
       return;
     }
 
-    const droppedEnergy = source.pos.findInRange(FIND_DROPPED_RESOURCES, 1, {
-      filter: (resource) => resource.resourceType === RESOURCE_ENERGY
-    });
+    const rangeToSource = creep.pos.getRangeTo(source);
 
-    const container = source.pos.findInRange(FIND_STRUCTURES, 1, {
-      filter: (structure) => structure.structureType === STRUCTURE_CONTAINER
-        && structure.store.getUsedCapacity(RESOURCE_ENERGY) > 0
+    /*
+    if (rangeToSource <= 1) {
+      const directionFromSource = source.pos.getDirectionTo(creep.pos);
+      creep.move(directionFromSource); // Move away from source
+      return;
+    }*/
+
+    // 🍯 Look for dropped energy within 1 tile
+    const droppedEnergy = source.pos.findInRange(FIND_DROPPED_RESOURCES, 1, {
+      filter: (r) => r.resourceType === RESOURCE_ENERGY
     });
 
     if (droppedEnergy.length > 0) {
       if (creep.pickup(droppedEnergy[0]) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(droppedEnergy[0], { visualizePathStyle: { stroke: '#0af' }, ignoreCreeps: true, stuckValue: 2 });
+        creep.moveTo(droppedEnergy[0], { visualizePathStyle: { stroke: '#0af' } });
       }
       return;
     }
 
-    if (container.length > 0) {
-      if (creep.withdraw(container[0], RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(container[0], { visualizePathStyle: { stroke: '#0af' }, ignoreCreeps: true, stuckValue: 2 });
+    // 🍯 Look for containers within 1 tile
+    const containers = source.pos.findInRange(FIND_STRUCTURES, 1, {
+      filter: (s) =>
+        s.structureType === STRUCTURE_CONTAINER &&
+        s.store[RESOURCE_ENERGY] > 0
+    });
+
+    if (containers.length > 0) {
+      if (creep.withdraw(containers[0], RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+        creep.moveTo(containers[0], { visualizePathStyle: { stroke: '#0af' } });
       }
       return;
     }
 
-    if (creep.room.storage && creep.room.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
-      if (creep.withdraw(creep.room.storage, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(creep.room.storage, { visualizePathStyle: { stroke: '#0af' }, ignoreCreeps: true, stuckValue: 2 });
-      }
+    // 🍂 If nothing to collect and not yet close enough, get into position
+    if (rangeToSource > 2) {
+      creep.moveTo(source, {
+        range: 2,
+        visualizePathStyle: { stroke: '#ccc' },
+        ignoreCreeps: true
+      });
     }
+
+    if (rangeToSource <= 1) {
+      const directionFromSource = source.pos.getDirectionTo(creep.pos);
+      creep.move(directionFromSource); // Move away from source
+      return;
+    }
+
+    // If after all that the creep is not empty, switch to delivering
+    if (creep.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+      creep.memory.delivering = true;
+      creep.say('🚚 deliver');
+    } 
   },
 
   deliverEnergy: function (creep) {
-    const nurses = creep.room.find(FIND_MY_CREEPS, {
-      filter: c => c.memory.role === 'nurse'
+    // 🏰 Priority: Towers first
+    const towers = creep.room.find(FIND_STRUCTURES, {
+      filter: (s) =>
+        s.structureType === STRUCTURE_TOWER &&
+        s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
     });
-
-    const fillExtensions = creep.room.energyAvailable < creep.room.energyCapacityAvailable;
-
-    let delivered = false;
-
-    // Containers (not adjacent to sources) first
-    let container = creep.pos.findClosestByPath(FIND_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_CONTAINER
-        && s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-        && s.pos.findInRange(FIND_SOURCES, 1).length === 0
-    });
-
-    if (container) {
-      if (creep.transfer(container, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(container, { visualizePathStyle: { stroke: '#0af' }, ignoreCreeps: true, stuckValue: 2 });
+  
+    if (towers.length > 0) {
+      towers.sort((a, b) =>
+        (a.store[RESOURCE_ENERGY] || 0) - (b.store[RESOURCE_ENERGY] || 0)
+      );
+      const target = towers[0];
+      if (creep.transfer(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+        creep.moveTo(target, { visualizePathStyle: { stroke: '#0af' } });
       }
-      delivered = true;
+      return;
     }
-
-    // Only fill extensions if no nurses are present
-    if (!delivered && nurses.length === 0 && fillExtensions) {
-      const target = creep.pos.findClosestByPath(FIND_STRUCTURES, {
-        filter: (structure) => {
-          return (structure.structureType === STRUCTURE_EXTENSION || structure.structureType === STRUCTURE_SPAWN)
-            && structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
-        }
-      });
+  
+    // 🏦 Storage
+    const storage = creep.room.storage;
+    if (storage && storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+      if (creep.transfer(storage, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+        creep.moveTo(storage, { visualizePathStyle: { stroke: '#0af' } });
+      }
+      return;
+    }
+  
+    // 📦 Fallback: Containers NOT near sources
+    const containers = creep.room.find(FIND_STRUCTURES, {
+      filter: s =>
+        s.structureType === STRUCTURE_CONTAINER &&
+        s.store.getFreeCapacity(RESOURCE_ENERGY) > 0 &&
+        !s.pos.findInRange(FIND_SOURCES, 1).length
+    });
+  
+    if (containers.length > 0) {
+      const target = creep.pos.findClosestByPath(containers);
       if (target && creep.transfer(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(target, { visualizePathStyle: { stroke: '#0af' }, ignoreCreeps: true, stuckValue: 2 });
-      }
-      delivered = true;
-    }
-
-    // Then Towers
-    if (!delivered) {
-      const tower = creep.pos.findClosestByPath(FIND_STRUCTURES, {
-        filter: (structure) => {
-          return (structure.structureType === STRUCTURE_TOWER)
-            && structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
-        }
-      });
-      if (tower && creep.transfer(tower, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(tower, { visualizePathStyle: { stroke: '#0af' }, ignoreCreeps: true, stuckValue: 2 });
-      }
-      delivered = true;
-    }
-
-    // Finally, drop into storage if nothing else needs it
-    if (!delivered && creep.room.storage && creep.room.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-      if (creep.transfer(creep.room.storage, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-        creep.travelTo(creep.room.storage, { visualizePathStyle: { stroke: '#0af' }, ignoreCreeps: true, stuckValue: 2 });
+        creep.moveTo(target, { visualizePathStyle: { stroke: '#0af' } });
       }
     }
   }
